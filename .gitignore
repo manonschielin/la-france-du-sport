@@ -1,0 +1,23 @@
+# Environnement virtuel (déjà ignoré par .venv/.gitignore, mais la consigne le demande ici)
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Caches des outils de qualité
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Données : trop lourdes (environ 250 Mo par fichier), re-téléchargées par get_data.py
+data/raw/*
+!data/raw/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
+
+# Éditeurs et système
+.vscode/
+.idea/
+.DS_Store
