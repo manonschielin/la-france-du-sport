@@ -1,5 +1,11 @@
+import config
+from src.utils.get_data import get_data
+
+
 def main():
-    print("Hello from data-project!")
+    if not config.DB_PATH.exists():
+        get_data()
+
 
 
 if __name__ == "__main__":
