@@ -38,10 +38,10 @@ def inserer(connexion: sqlite3.Connection, table: str, colonnes: list[str], lign
 
 def recuperer_licences(connexion: sqlite3.Connection) -> None:
     """Une table raw_licences_AAAA par année (les colonnes changent selon les années)."""
-    for annee, (url, sep) in config.LICENCES.items():
+    for annee, (url, sep, encodage) in config.LICENCES.items():
         chemin = config.DATA_RAW_DIR / f"licences_{annee}.csv"
         telecharger(url, chemin)
-        with open(chemin, encoding="utf-8-sig", newline="") as fichier:
+        with open(chemin, encoding=encodage, newline="") as fichier:
             lecteur = csv.reader(fichier, delimiter=sep)
             colonnes = next(lecteur)  # la première ligne contient les noms des colonnes
             inserer(connexion, f"raw_licences_{annee}", colonnes, lecteur)
