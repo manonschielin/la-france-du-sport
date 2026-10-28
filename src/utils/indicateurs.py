@@ -150,3 +150,62 @@ def liste_sports_uniques() -> pd.DataFrame:
         .sort_values("sport")
         .reset_index(drop=True)
     )
+
+
+
+@lru_cache(maxsize=20)
+def donnees_departements(annee: int) -> pd.DataFrame:
+    """Charge les licences par département et par sport."""
+    with sqlite3.connect(config.DB_PATH) as connexion:
+                donnees = pd.read_sql_query(
+            """
+            SELECT
+                s.code_departement,
+                f.nom AS federation,
+                s.licences
+            FROM (
+                SELECT
+                    code_departement,
+                    code_federation,
+                    SUM(total) AS licences
+                FROM cleaned_licences
+                WHERE annee = ?
+                GROUP BY code_departement, code_federation
+            ) AS s
+            JOIN cleaned_federations AS f
+                ON s.code_federation = f.code
+            WHERE f.famille IN (
+                'unisport olympique',
+                'unisport non olympique'
+            )
+            """,
+            connexion,
+            params=(annee,),
+        )
+        
+    donnees["sport"] = donnees["federation"].apply(nom_sport)
+
+    return donnees.groupby(
+        ["code_departement", "sport"],
+        as_index=False,
+    )["licences"].sum()
+
+
+def sport_numero_un_departements(
+    annee: int,
+    codes_departements: list[str],
+    exclusions: list[str] | None = None,
+) -> pd.DataFrame:
+    """Trouve le sport dominant de chaque département demandé."""
+    donnees = donnees_departements(annee)
+    donnees = donnees.loc[donnees["code_departement"].isin(codes_departements)]
+
+    if exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+
+    if donnees.empty:
+        return donnees
+
+    indices = donnees.groupby("code_departement")["licences"].idxmax()
+
+    return donnees.loc[indices].reset_index(drop=True)

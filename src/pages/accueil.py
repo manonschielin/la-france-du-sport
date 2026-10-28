@@ -1,10 +1,10 @@
 """Page d'accueil : carte des sports dominants et classement par région."""
 
-from dash import Dash, Input, Output, State, dcc, html
+from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
 
 import config
-from src.components.carte import creer_carte, noms_regions
+from src.components.carte import creer_carte, creer_carte_departements, noms_regions
 from src.components.classement import creer_classement
 from src.utils.indicateurs import liste_sports_uniques
 
@@ -28,6 +28,31 @@ def creer_page() -> html.Div:
 
             html.P(
                 "Explorez les pratiques sportives selon les régions."
+            ),
+
+                        # Mode d'emploi
+            html.Div(
+                [
+                    html.Strong("Comment utiliser la carte :"),
+                    html.Ol(
+                        [
+                            html.Li("Choisissez une année et, si vous le souhaitez, des sports à exclure "
+                                    "(par exemple le football, présent partout)."),
+                            html.Li("Cliquez sur une région : la carte affiche le sport dominant de chacun "
+                                    "de ses départements, et le classement des 10 premiers sports de la "
+                                    "région apparaît à droite."),
+                            html.Li("Cliquez sur « ← Retour à la France » pour revenir à la carte des régions."),
+                        ],
+                        style={"margin": "8px 0 0 0", "paddingLeft": "20px"},
+                    ),
+                ],
+                style={
+                    "backgroundColor": "#f3f4f6",
+                    "borderLeft": "4px solid #6366f1",
+                    "padding": "12px 16px",
+                    "marginBottom": "25px",
+                    "fontSize": "14px",
+                },
             ),
 
             # Filtres
@@ -90,7 +115,13 @@ def creer_page() -> html.Div:
             html.Div(
                 [
                     html.Div(
-                        [
+                        [   
+                            html.Button(
+                                "← Retour à la France",
+                                id="bouton-retour",
+                                n_clicks=0,
+                                style={"marginBottom": "10px"},
+                            ),
                             dcc.Graph(
                                 id="carte-sports",
                                 config={
@@ -152,21 +183,37 @@ def enregistrer_callbacks(app: Dash) -> None:
         Output("carte-sports", "figure"),
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
+        Input("region-selectionnee", "data"),
     )
     def actualiser_carte(
         annee: int,
         exclusions: list[str],
+        code_region: str | None,
     ):
-        """Actualise les couleurs des régions."""
+        """Carte des régions, ou des départements si une région est choisie."""
+        if code_region:
+            return creer_carte_departements(annee, code_region, exclusions)
         return creer_carte(annee, exclusions)
 
     @app.callback(
         Output("region-selectionnee", "data"),
         Input("carte-sports", "clickData"),
+        Input("bouton-retour", "n_clicks"),
         State("region-selectionnee", "data"),
     )
-    def memoriser_region(clic: dict | None, region_actuelle: str | None):
-        """Mémorise le code de la région cliquée."""
+    def memoriser_region(
+        clic: dict | None,
+        _clics_retour: int,
+        region_actuelle: str | None,
+    ):
+        """Mémorise la région cliquée, ou revient à la France avec le bouton."""
+        if ctx.triggered_id == "bouton-retour":
+            return None
+
+        # Sur la carte des départements, un clic ne change pas de région.
+        if region_actuelle is not None:
+            return region_actuelle
+
         if not clic or not clic.get("points"):
             return region_actuelle
 
