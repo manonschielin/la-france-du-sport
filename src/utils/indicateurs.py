@@ -40,13 +40,16 @@ def donnees_regions(annee: int) -> pd.DataFrame:
         donnees = pd.read_sql_query(
             """
             SELECT
-                c.code_region,
+                d.code_region,
                 l.code_federation,
                 f.nom AS federation,
                 SUM(l.total) AS licences
             FROM cleaned_licences AS l
-            JOIN cleaned_communes AS c
-                ON l.code_commune = c.code_commune
+            JOIN (
+                SELECT DISTINCT code_departement, code_region
+                FROM cleaned_communes
+            ) AS d
+                ON l.code_departement = d.code_departement
             JOIN cleaned_federations AS f
                 ON l.code_federation = f.code
             WHERE l.annee = ?
@@ -55,7 +58,7 @@ def donnees_regions(annee: int) -> pd.DataFrame:
                   'unisport non olympique'
               )
             GROUP BY
-                c.code_region,
+                d.code_region,
                 l.code_federation,
                 f.nom
             """,

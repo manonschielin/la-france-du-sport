@@ -1,0 +1,79 @@
+"""Graphique du classement des sports d'une région."""
+
+import plotly.graph_objects as go
+
+from src.utils.indicateurs import classement_region
+
+
+def creer_classement(
+    annee: int,
+    code_region: str,
+    exclusions: list[str],
+) -> go.Figure:
+    """Crée le graphique des dix premières fédérations."""
+
+    classement = classement_region(
+        annee,
+        code_region,
+        exclusions,
+    )
+
+    figure = go.Figure()
+
+    if classement.empty:
+        figure.add_annotation(
+            text="Aucune donnée pour cette sélection",
+            showarrow=False,
+        )
+        figure.update_layout(height=550)
+        return figure
+
+    classement = classement.sort_values("licences")
+
+    figure.add_trace(
+        go.Bar(
+            x=classement["licences"],
+            y=classement["sport"],
+            orientation="h",
+            marker_color="#6366f1",
+            text=classement["licences"],
+            texttemplate="%{text:,.0f}",
+            textposition="outside",
+            cliponaxis=False,
+            hovertemplate=(
+                "<b>%{y}</b>"
+                "<br>Licences : %{x:,.0f}"
+                "<extra></extra>"
+            ),
+        )
+    )
+
+    figure.update_layout(
+        height=550,
+        margin={
+            "l": 125,
+            "r": 70,
+            "t": 25,
+            "b": 50,
+        },
+        xaxis_title="Nombre de licences",
+        yaxis_title=None,
+        showlegend=False,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font={"size": 12},
+        bargap=0.3,
+    )
+
+    figure.update_yaxes(
+        automargin=True,
+        tickfont={"size": 11},
+    )
+
+    figure.update_xaxes(
+        showgrid=True,
+        gridcolor="#e5e7eb",
+        rangemode="tozero",
+    )
+
+    return figure
