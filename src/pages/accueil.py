@@ -4,7 +4,10 @@ from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
 
 import config
-from src.components.carte import creer_carte, creer_carte_departements, noms_regions
+from src.components.carte import (
+    creer_carte, creer_carte_departements, creer_carte_communes,
+    noms_regions, noms_departements, contours_communes_departement,
+)
 from src.components.classement import creer_classement
 from src.utils.indicateurs import liste_sports_uniques
 
@@ -41,7 +44,8 @@ def creer_page() -> html.Div:
                             html.Li("Cliquez sur une région : la carte affiche le sport dominant de chacun "
                                     "de ses départements, et le classement des 10 premiers sports de la "
                                     "région apparaît à droite."),
-                            html.Li("Cliquez sur « ← Retour à la France » pour revenir à la carte des régions."),
+                            html.Li("Cliquez sur un département pour voir ses communes, puis sur une commune pour son classement."),
+                            html.Li("Utilisez « Retour » pour remonter un niveau."),
                         ],
                         style={"margin": "8px 0 0 0", "paddingLeft": "20px"},
                     ),
@@ -111,13 +115,16 @@ def creer_page() -> html.Div:
                 data=None,
             ),
 
+            dcc.Store(id="departement-selectionne", data=None),
+            dcc.Store(id="commune-selectionnee", data=None),
+
             # Carte + classement
             html.Div(
                 [
                     html.Div(
                         [   
                             html.Button(
-                                "← Retour à la France",
+                                "← Retour",
                                 id="bouton-retour",
                                 n_clicks=0,
                                 style={"marginBottom": "10px"},
@@ -184,72 +191,79 @@ def enregistrer_callbacks(app: Dash) -> None:
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
         Input("region-selectionnee", "data"),
+        Input("departement-selectionne", "data"),
     )
-    def actualiser_carte(
-        annee: int,
-        exclusions: list[str],
-        code_region: str | None,
-    ):
-        """Carte des régions, ou des départements si une région est choisie."""
+    def actualiser_carte(annee: int, exclusions: list[str],
+                         code_region: str | None, code_departement: str | None):
+        """France, départements ou communes selon la profondeur de navigation."""
+        if code_departement:
+            return creer_carte_communes(annee, code_departement, exclusions)
         if code_region:
             return creer_carte_departements(annee, code_region, exclusions)
         return creer_carte(annee, exclusions)
 
     @app.callback(
         Output("region-selectionnee", "data"),
+        Output("departement-selectionne", "data"),
+        Output("commune-selectionnee", "data"),
         Input("carte-sports", "clickData"),
         Input("bouton-retour", "n_clicks"),
         State("region-selectionnee", "data"),
+        State("departement-selectionne", "data"),
+        State("commune-selectionnee", "data"),
+        prevent_initial_call=True,
     )
-    def memoriser_region(
-        clic: dict | None,
-        _clics_retour: int,
-        region_actuelle: str | None,
-    ):
-        """Mémorise la région cliquée, ou revient à la France avec le bouton."""
+    def naviguer(clic: dict | None, _retours: int,
+                 region: str | None, departement: str | None,
+                 commune: str | None):
+        """Navigue d'un niveau au clic et remonte d'un niveau avec Retour."""
         if ctx.triggered_id == "bouton-retour":
-            return None
-
-        # Sur la carte des départements, un clic ne change pas de région.
-        if region_actuelle is not None:
-            return region_actuelle
+            if commune:
+                return region, departement, None
+            if departement:
+                return region, None, None
+            return None, None, None
 
         if not clic or not clic.get("points"):
-            return region_actuelle
-
-        code = str(clic["points"][0]["location"]).zfill(2)
-
-        if code not in regions:
-            return region_actuelle
-
-        return code
+            return region, departement, commune
+        code = str(clic["points"][0].get("location", ""))
+        if departement:
+            # Un clic sur une commune sélectionne son classement, sans modifier la carte.
+            valides = {str(zone["properties"]["code"])
+                       for zone in contours_communes_departement(departement)["features"]}
+            if code in valides:
+                return region, departement, code
+        elif region:
+            if code in noms_departements(region):
+                return region, code, None
+        elif code.zfill(2) in regions:
+            return code.zfill(2), None, None
+        return region, departement, commune
 
     @app.callback(
         Output("classement-sports", "figure"),
         Output("nom-region", "children"),
         Input("region-selectionnee", "data"),
+        Input("departement-selectionne", "data"),
+        Input("commune-selectionnee", "data"),
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
     )
-    def actualiser_classement(
-        code_region: str | None,
-        annee: int,
-        exclusions: list[str],
-    ):
-        """Actualise le classement de la région choisie."""
-
-        if not code_region:
-            return (
-                go.Figure(),
-                "Cliquez sur une région de la carte pour voir son classement.",
-            )
-
-        nom = regions.get(code_region, code_region)
-
-        figure = creer_classement(
-            annee,
-            code_region,
-            exclusions,
-        )
-
+    def actualiser_classement(region: str | None, departement: str | None,
+                              commune: str | None, annee: int,
+                              exclusions: list[str]):
+        """Classement de la commune, du département ou de la région sélectionnée."""
+        if not region:
+            return go.Figure(), "Cliquez sur une région pour afficher son classement."
+        if commune:
+            zones = contours_communes_departement(departement)
+            noms = {str(z["properties"]["code"]): z["properties"].get("nom", commune)
+                    for z in zones["features"]}
+            niveau, code, nom = "commune", commune, noms.get(commune, commune)
+        elif departement:
+            niveau, code = "departement", departement
+            nom = noms_departements(region).get(departement, departement)
+        else:
+            niveau, code, nom = "region", region, regions.get(region, region)
+        figure = creer_classement(annee, code, exclusions, niveau=niveau)
         return figure, f"Top 10 — {nom} ({annee})"

@@ -2,21 +2,23 @@
 
 import plotly.graph_objects as go
 
-from src.utils.indicateurs import classement_region
+from src.utils.indicateurs import (
+    classement_region, classement_departement, classement_commune,
+)
 
 
 def creer_classement(
     annee: int,
     code_region: str,
     exclusions: list[str],
+    niveau: str = "region",
 ) -> go.Figure:
     """Crée le graphique des dix premières fédérations."""
 
-    classement = classement_region(
-        annee,
-        code_region,
-        exclusions,
-    )
+    calculs = {"region": classement_region,
+               "departement": classement_departement,
+               "commune": classement_commune}
+    classement = calculs[niveau](annee, code_region, exclusions)
 
     figure = go.Figure()
 

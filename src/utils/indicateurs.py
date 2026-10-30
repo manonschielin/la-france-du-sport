@@ -1,5 +1,4 @@
-
-"""Calcul des indicateurs sportifs du dashboard."""
+"""Indicateurs sportifs : agrégations contrôlées et filtres indépendants de Dash."""
 
 import sqlite3
 from functools import lru_cache
@@ -9,186 +8,161 @@ import pandas as pd
 import config
 from src.utils.referentiel import nom_sport
 
+FAMILLES_UNISPORT = ("unisport olympique", "unisport non olympique")
+
+
+def _normaliser_codes(colonne: pd.Series, longueur: int | None = None) -> pd.Series:
+    """Garde les codes géographiques comme du texte, avec zéros initiaux si requis."""
+    codes = colonne.astype("string").str.strip()
+    if longueur is not None:
+        codes = codes.str.zfill(longueur)
+    return codes
+
 
 @lru_cache(maxsize=1)
 def liste_sports() -> pd.DataFrame:
-    """Retourne les fédérations unisports disponibles."""
+    """Renvoie les fédérations unisports avec un libellé simplifié."""
     with sqlite3.connect(config.DB_PATH) as connexion:
         sports = pd.read_sql_query(
-            """
-            SELECT code, nom
-            FROM cleaned_federations
-            WHERE famille IN (
-                'unisport olympique',
-                'unisport non olympique'
-            )
-            ORDER BY nom
-            """,
+            """SELECT code, nom FROM cleaned_federations
+               WHERE famille IN (?, ?) ORDER BY nom""",
             connexion,
+            params=FAMILLES_UNISPORT,
         )
-
     sports["code"] = sports["code"].astype(str)
     sports["sport"] = sports["nom"].apply(nom_sport)
-
-    return sports.sort_values("sport").reset_index(drop=True)
-
-
-@lru_cache(maxsize=20)
-def donnees_regions(annee: int) -> pd.DataFrame:
-    """Charge les licences par région et fédération."""
-    with sqlite3.connect(config.DB_PATH) as connexion:
-        donnees = pd.read_sql_query(
-            """
-            SELECT
-                d.code_region,
-                l.code_federation,
-                f.nom AS federation,
-                SUM(l.total) AS licences
-            FROM cleaned_licences AS l
-            JOIN (
-                SELECT DISTINCT code_departement, code_region
-                FROM cleaned_communes
-            ) AS d
-                ON l.code_departement = d.code_departement
-            JOIN cleaned_federations AS f
-                ON l.code_federation = f.code
-            WHERE l.annee = ?
-              AND f.famille IN (
-                  'unisport olympique',
-                  'unisport non olympique'
-              )
-            GROUP BY
-                d.code_region,
-                l.code_federation,
-                f.nom
-            """,
-            connexion,
-            params=(annee,),
-        )
-
-    donnees["code_region"] = (
-        donnees["code_region"].astype(str).str.zfill(2)
-    )
-    donnees["code_federation"] = (
-        donnees["code_federation"].astype(str)
-    )
-
-    donnees["sport"] = (
-        donnees["federation"].apply(nom_sport)
-    )
-
-    donnees = (
-        donnees.groupby(
-            ["code_region", "sport"],
-            as_index=False,
-        )["licences"]
-        .sum()
-    )
-
-    donnees["code_federation"] = donnees["sport"]
-
-    return donnees
-
-
-def sports_par_region(
-    annee: int,
-    exclusions: list[str] | None = None,
-) -> pd.DataFrame:
-    """Retourne les licences en excluant les sports choisis."""
-    donnees = donnees_regions(annee)
-
-    if not exclusions:
-        return donnees.copy()
-
-    return donnees.loc[
-        ~donnees["sport"].isin(exclusions)
-    ].copy()
-
-
-
-def sport_numero_un(
-    annee: int,
-    exclusions: list[str] | None = None,
-) -> pd.DataFrame:
-    """Trouve la fédération dominante dans chaque région."""
-    donnees = sports_par_region(annee, exclusions)
-
-    if donnees.empty:
-        return donnees
-
-    indices = donnees.groupby("code_region")["licences"].idxmax()
-
-    return donnees.loc[indices].reset_index(drop=True)
-
-
-def classement_region(
-    annee: int,
-    code_region: str,
-    exclusions: list[str] | None = None,
-) -> pd.DataFrame:
-    """Retourne les dix fédérations dominantes d'une région."""
-    donnees = sports_par_region(annee, exclusions)
-
-    region = donnees.loc[
-        donnees["code_region"] == str(code_region).zfill(2)
-    ]
-
-    return (
-        region.sort_values("licences", ascending=False)
-        .head(10)
-        .reset_index(drop=True)
-    )
+    return sports.sort_values(["sport", "code"]).reset_index(drop=True)
 
 
 def liste_sports_uniques() -> pd.DataFrame:
-    """Retourne les noms de sports uniques pour les filtres."""
-    sports = liste_sports()
-
+    """Un seul choix par discipline dans le menu d'exclusion."""
     return (
-        sports[["sport"]]
+        liste_sports()[["sport"]]
         .drop_duplicates()
         .sort_values("sport")
         .reset_index(drop=True)
     )
 
 
+def verifier_correspondances_departements(connexion: sqlite3.Connection) -> None:
+    """Refuse les départements rattachés à plusieurs régions."""
+    conflits = pd.read_sql_query(
+        """SELECT code_departement, COUNT(DISTINCT code_region) AS n
+           FROM cleaned_communes
+           WHERE code_departement IS NOT NULL AND code_region IS NOT NULL
+           GROUP BY code_departement
+           HAVING COUNT(DISTINCT code_region) > 1""",
+        connexion,
+    )
+    if not conflits.empty:
+        codes = ", ".join(conflits["code_departement"].astype(str).tolist()[:10])
+        raise ValueError(
+            "Correspondance département/région ambiguë dans cleaned_communes : "
+            + codes
+        )
+
+
+def _agregation_sql(annee: int, niveau: str) -> pd.DataFrame:
+    """Charge les licences par fédération et territoire, sans dupliquer les jointures."""
+    if niveau not in {"region", "departement"}:
+        raise ValueError(f"Échelle inconnue : {niveau}")
+
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        if niveau == "region":
+            verifier_correspondances_departements(connexion)
+            # Une seule ligne par département dans la table de correspondance.
+            sql = """
+                SELECT d.code_region AS code_zone,
+                       l.code_federation, f.nom AS federation,
+                       SUM(l.total) AS licences
+                FROM cleaned_licences AS l
+                JOIN (
+                    SELECT code_departement, MIN(code_region) AS code_region
+                    FROM cleaned_communes
+                    WHERE code_departement IS NOT NULL AND code_region IS NOT NULL
+                    GROUP BY code_departement
+                ) AS d ON l.code_departement = d.code_departement
+                JOIN cleaned_federations AS f ON l.code_federation = f.code
+                WHERE l.annee = ? AND f.famille IN (?, ?)
+                GROUP BY d.code_region, l.code_federation, f.nom
+            """
+        else:
+            sql = """
+                SELECT l.code_departement AS code_zone,
+                       l.code_federation, f.nom AS federation,
+                       SUM(l.total) AS licences
+                FROM cleaned_licences AS l
+                JOIN cleaned_federations AS f ON l.code_federation = f.code
+                WHERE l.annee = ? AND f.famille IN (?, ?)
+                GROUP BY l.code_departement, l.code_federation, f.nom
+            """
+        donnees = pd.read_sql_query(
+            sql, connexion, params=(annee, *FAMILLES_UNISPORT)
+        )
+
+    donnees["code_zone"] = _normaliser_codes(
+        donnees["code_zone"], 2 if niveau == "region" else None
+    )
+    donnees["code_federation"] = donnees["code_federation"].astype(str)
+    donnees["sport"] = donnees["federation"].apply(nom_sport)
+    return donnees
+
+
+def _regrouper_sports(donnees: pd.DataFrame, colonne_zone: str) -> pd.DataFrame:
+    """Additionne les fédérations partageant un nom de sport sans falsifier leurs codes."""
+    return (
+        donnees.groupby([colonne_zone, "sport"], as_index=False)["licences"]
+        .sum()
+    )
+
+
+@lru_cache(maxsize=20)
+def donnees_regions(annee: int) -> pd.DataFrame:
+    """Licences par région et par discipline pour une année."""
+    donnees = _agregation_sql(annee, "region")
+    donnees = donnees.rename(columns={"code_zone": "code_region"})
+    return _regrouper_sports(donnees, "code_region")
+
+
+def sports_par_region(
+    annee: int, exclusions: list[str] | None = None
+) -> pd.DataFrame:
+    """Filtre les sports exclus, sans modifier les données mises en cache."""
+    donnees = donnees_regions(annee)
+    if exclusions:
+        return donnees.loc[~donnees["sport"].isin(exclusions)].copy()
+    return donnees.copy()
+
+
+def sport_numero_un(
+    annee: int, exclusions: list[str] | None = None
+) -> pd.DataFrame:
+    """Choisit le sport dominant dans chaque région (tri déterministe si égalité)."""
+    donnees = sports_par_region(annee, exclusions)
+    return (
+        donnees.sort_values(["licences", "sport"], ascending=[False, True])
+        .drop_duplicates("code_region")
+        .reset_index(drop=True)
+    )
+
+
+def classement_region(
+    annee: int, code_region: str, exclusions: list[str] | None = None
+) -> pd.DataFrame:
+    """Dix sports les plus représentés dans une région."""
+    donnees = sports_par_region(annee, exclusions)
+    region = donnees.loc[donnees["code_region"] == str(code_region).zfill(2)]
+    return region.sort_values(
+        ["licences", "sport"], ascending=[False, True]
+    ).head(10).reset_index(drop=True)
+
 
 @lru_cache(maxsize=20)
 def donnees_departements(annee: int) -> pd.DataFrame:
-    """Charge les licences par département et par sport."""
-    with sqlite3.connect(config.DB_PATH) as connexion:
-                donnees = pd.read_sql_query(
-            """
-            SELECT
-                s.code_departement,
-                f.nom AS federation,
-                s.licences
-            FROM (
-                SELECT
-                    code_departement,
-                    code_federation,
-                    SUM(total) AS licences
-                FROM cleaned_licences
-                WHERE annee = ?
-                GROUP BY code_departement, code_federation
-            ) AS s
-            JOIN cleaned_federations AS f
-                ON s.code_federation = f.code
-            WHERE f.famille IN (
-                'unisport olympique',
-                'unisport non olympique'
-            )
-            """,
-            connexion,
-            params=(annee,),
-        )
-        
-    donnees["sport"] = donnees["federation"].apply(nom_sport)
-
-    return donnees.groupby(
-        ["code_departement", "sport"],
-        as_index=False,
-    )["licences"].sum()
+    """Licences par département et par discipline pour une année."""
+    donnees = _agregation_sql(annee, "departement")
+    donnees = donnees.rename(columns={"code_zone": "code_departement"})
+    return _regrouper_sports(donnees, "code_departement")
 
 
 def sport_numero_un_departements(
@@ -196,16 +170,73 @@ def sport_numero_un_departements(
     codes_departements: list[str],
     exclusions: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Trouve le sport dominant de chaque département demandé."""
+    """Sport dominant dans les départements demandés, hors exclusions."""
     donnees = donnees_departements(annee)
-    donnees = donnees.loc[donnees["code_departement"].isin(codes_departements)]
-
+    donnees = donnees.loc[
+        donnees["code_departement"].isin(codes_departements)
+    ]
     if exclusions:
         donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+    return (
+        donnees.sort_values(["licences", "sport"], ascending=[False, True])
+        .drop_duplicates("code_departement")
+        .reset_index(drop=True)
+    )
 
-    if donnees.empty:
-        return donnees
 
-    indices = donnees.groupby("code_departement")["licences"].idxmax()
+@lru_cache(maxsize=20)
+def donnees_communes(annee: int) -> pd.DataFrame:
+    """Licences unisport par commune, sans jointure susceptible de dupliquer les lignes."""
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            """SELECT l.code_commune, l.code_federation,
+                      f.nom AS federation, SUM(l.total) AS licences
+               FROM cleaned_licences AS l
+               JOIN cleaned_federations AS f ON l.code_federation = f.code
+               WHERE l.annee = ? AND f.famille IN (?, ?)
+               GROUP BY l.code_commune, l.code_federation, f.nom""",
+            connexion, params=(annee, *FAMILLES_UNISPORT),
+        )
+    donnees["code_commune"] = _normaliser_codes(donnees["code_commune"], 5)
+    donnees["sport"] = donnees["federation"].apply(nom_sport)
+    return _regrouper_sports(donnees, "code_commune")
 
-    return donnees.loc[indices].reset_index(drop=True)
+
+def sports_par_commune(annee: int, code_commune: str,
+                      exclusions: list[str] | None = None) -> pd.DataFrame:
+    """Sports d'une commune, en respectant les exclusions."""
+    donnees = donnees_communes(annee)
+    donnees = donnees.loc[donnees["code_commune"] == str(code_commune)]
+    if exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+    return donnees.copy()
+
+
+def sport_numero_un_communes(annee: int, codes_communes: list[str],
+                             exclusions: list[str] | None = None) -> pd.DataFrame:
+    """Sport dominant de chaque commune affichée uniquement."""
+    donnees = donnees_communes(annee)
+    donnees = donnees.loc[donnees["code_commune"].isin(codes_communes)]
+    if exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+    return (donnees.sort_values(["licences", "sport"], ascending=[False, True])
+            .drop_duplicates("code_commune").reset_index(drop=True))
+
+
+def classement_commune(annee: int, code_commune: str,
+                       exclusions: list[str] | None = None) -> pd.DataFrame:
+    """Dix sports les plus représentés dans une commune."""
+    return (sports_par_commune(annee, code_commune, exclusions)
+            .sort_values(["licences", "sport"], ascending=[False, True])
+            .head(10).reset_index(drop=True))
+
+
+def classement_departement(annee: int, code_departement: str,
+                           exclusions: list[str] | None = None) -> pd.DataFrame:
+    """Dix sports les plus représentés dans un département."""
+    donnees = donnees_departements(annee)
+    donnees = donnees.loc[donnees["code_departement"] == str(code_departement)]
+    if exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+    return (donnees.sort_values(["licences", "sport"], ascending=[False, True])
+            .head(10).reset_index(drop=True))
