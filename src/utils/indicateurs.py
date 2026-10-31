@@ -304,3 +304,76 @@ def licences_par_annee(
         donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
 
     return donnees.groupby("annee", as_index=False)["licences"].sum()
+
+
+# En dessous de ce nombre d'habitants, un seul licencié fausse le taux : on ne le calcule pas.
+POPULATION_MINIMUM = 200
+
+
+def code_ville(code_commune: str) -> str:
+    """Remplace un code d'arrondissement par celui de sa ville (75115 -> 75056)."""
+    code = str(code_commune)
+    if "75101" <= code <= "75120":
+        return "75056"  # Paris
+    if "69381" <= code <= "69389":
+        return "69123"  # Lyon
+    if "13201" <= code <= "13216":
+        return "13055"  # Marseille
+    return code
+
+
+@lru_cache(maxsize=3)
+def populations(niveau: str) -> pd.DataFrame:
+    """Population par région, département ou commune (colonnes : code, population)."""
+    colonne = {"region": "code_region", "departement": "code_departement",
+               "commune": "code_commune"}[niveau]
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        return pd.read_sql_query(
+            f"SELECT {colonne} AS code, SUM(population) AS population "
+            f"FROM cleaned_communes GROUP BY {colonne}",
+            connexion,
+        )
+
+
+def codes_federations(sport: str) -> list[str]:
+    """Codes des fédérations regroupées sous un même nom de sport (ex. : les deux de judo)."""
+    sports = liste_sports()
+    return sports.loc[sports["sport"] == sport, "code"].tolist()
+
+
+@lru_cache(maxsize=50)
+def licences_sport_communes(annee: int, sport: str) -> pd.DataFrame:
+    """Licences d'un sport dans chaque commune pour une année (arrondissements regroupés)."""
+    codes = codes_federations(sport)
+    marqueurs = ", ".join("?" * len(codes))
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            f"""SELECT code_commune AS code, SUM(total) AS licences
+                FROM cleaned_licences
+                WHERE annee = ? AND code_federation IN ({marqueurs})
+                GROUP BY code_commune""",
+            connexion,
+            params=(annee, *codes),
+        )
+    donnees["code"] = donnees["code"].apply(code_ville)
+    return donnees.groupby("code", as_index=False)["licences"].sum()
+
+
+def licences_pour_1000(annee: int, sport: str, niveau: str) -> pd.DataFrame:
+    """Licences d'un sport pour 1 000 habitants, par région, département ou commune.
+
+    Colonnes : code, licences, population, taux (vide si la population est trop petite).
+    """
+    if niveau == "commune":
+        licences = licences_sport_communes(annee, sport)
+    else:
+        resume = resume_departements()
+        resume = resume.loc[(resume["annee"] == annee) & (resume["sport"] == sport)]
+        colonne = "code_region" if niveau == "region" else "code_departement"
+        licences = (resume.groupby(colonne, as_index=False)["licences"].sum()
+                    .rename(columns={colonne: "code"}))
+
+    donnees = licences.merge(populations(niveau), on="code", how="inner")
+    donnees["taux"] = (donnees["licences"] / donnees["population"] * 1000).round(1)
+    donnees.loc[donnees["population"] < POPULATION_MINIMUM, "taux"] = None
+    return donnees.sort_values("taux", ascending=False).reset_index(drop=True)
