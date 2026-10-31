@@ -189,12 +189,16 @@ def donnees_communes(annee: int) -> pd.DataFrame:
     """Licences unisport par commune, sans jointure susceptible de dupliquer les lignes."""
     with sqlite3.connect(config.DB_PATH) as connexion:
         donnees = pd.read_sql_query(
-            """SELECT l.code_commune, l.code_federation,
-                      f.nom AS federation, SUM(l.total) AS licences
-               FROM cleaned_licences AS l
-               JOIN cleaned_federations AS f ON l.code_federation = f.code
-               WHERE l.annee = ? AND f.famille IN (?, ?)
-               GROUP BY l.code_commune, l.code_federation, f.nom""",
+            """SELECT s.code_commune, s.code_federation,
+                      f.nom AS federation, s.licences
+               FROM (
+                   SELECT code_commune, code_federation, SUM(total) AS licences
+                   FROM cleaned_licences
+                   WHERE annee = ?
+                   GROUP BY code_commune, code_federation
+               ) AS s
+               JOIN cleaned_federations AS f ON s.code_federation = f.code
+               WHERE f.famille IN (?, ?)""",
             connexion, params=(annee, *FAMILLES_UNISPORT),
         )
     donnees["code_commune"] = _normaliser_codes(donnees["code_commune"], 5)

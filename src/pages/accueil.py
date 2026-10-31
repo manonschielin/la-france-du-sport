@@ -46,6 +46,9 @@ def creer_page() -> html.Div:
                                     "région apparaît à droite."),
                             html.Li("Cliquez sur un département pour voir ses communes, puis sur une commune pour son classement."),
                             html.Li("Utilisez « Retour » pour remonter un niveau."),
+                            html.Li("Le premier affichage d'une année ou des communes d'un département "
+                                    "peut prendre jusqu'à une minute : les données se chargent puis "
+                                    "restent en mémoire, les clics suivants sont rapides."),
                         ],
                         style={"margin": "8px 0 0 0", "paddingLeft": "20px"},
                     ),
@@ -129,13 +132,16 @@ def creer_page() -> html.Div:
                                 n_clicks=0,
                                 style={"marginBottom": "10px"},
                             ),
-                            dcc.Graph(
-                                id="carte-sports",
-                                config={
-                                    "displaylogo": False,
-                                    "responsive": True,
-                                },
-                                style={"width": "100%"},
+                            dcc.Loading(
+                                dcc.Graph(
+                                    id="carte-sports",
+                                    config={
+                                        "displaylogo": False,
+                                        "responsive": True,
+                                    },
+                                    style={"width": "100%"},
+                                ),
+                                type="circle",
                             ),
                         ],
                         style={
