@@ -136,6 +136,18 @@ def lire_noms_contours(niveau: str) -> pd.DataFrame:
     return pd.DataFrame([zone["properties"] for zone in contours["features"]])[["code", "nom"]]
 
 
+def creer_resume_departements(connexion: sqlite3.Connection) -> None:
+    """Table résumée : licences par année, département et fédération (graphiques rapides)."""
+    connexion.execute("DROP TABLE IF EXISTS cleaned_licences_departements")
+    connexion.execute(
+        """CREATE TABLE cleaned_licences_departements AS
+           SELECT annee, code_departement, code_federation, SUM(total) AS total
+           FROM cleaned_licences
+           GROUP BY annee, code_departement, code_federation"""
+    )
+    connexion.commit()
+
+
 def clean_data() -> None:
     """Crée les tables cleaned_ à partir des tables raw_ de la base."""
     connexion = sqlite3.connect(config.DB_PATH)
@@ -146,6 +158,7 @@ def clean_data() -> None:
         mode = "replace" if numero == 0 else "append"
         licences.to_sql("cleaned_licences", connexion, if_exists=mode, index=False)
 
+    creer_resume_departements(connexion)
     nettoyer_federations(connexion).to_sql("cleaned_federations", connexion, if_exists="replace", index=False)
     nettoyer_communes(connexion).to_sql("cleaned_communes", connexion, if_exists="replace", index=False)
     lire_noms_contours("regions").to_sql("cleaned_regions", connexion, if_exists="replace", index=False)

@@ -244,3 +244,63 @@ def classement_departement(annee: int, code_departement: str,
         donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
     return (donnees.sort_values(["licences", "sport"], ascending=[False, True])
             .head(10).reset_index(drop=True))
+
+
+@lru_cache(maxsize=1)
+def resume_departements() -> pd.DataFrame:
+    """Licences par année, département et sport, avec la région (chargées une seule fois)."""
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            """SELECT r.annee, r.code_departement, d.code_region,
+                      f.nom AS federation, r.total AS licences
+               FROM cleaned_licences_departements AS r
+               JOIN cleaned_federations AS f ON r.code_federation = f.code
+               LEFT JOIN (
+                   SELECT code_departement, MIN(code_region) AS code_region
+                   FROM cleaned_communes
+                   GROUP BY code_departement
+               ) AS d ON r.code_departement = d.code_departement
+               WHERE f.famille IN (?, ?)""",
+            connexion,
+            params=FAMILLES_UNISPORT,
+        )
+    donnees["sport"] = donnees["federation"].apply(nom_sport)
+    return donnees
+
+
+@lru_cache(maxsize=50)
+def licences_commune(code_commune: str) -> pd.DataFrame:
+    """Licences d'une commune par année et par sport (rapide grâce à l'index des communes)."""
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            """SELECT l.annee, f.nom AS federation, SUM(l.total) AS licences
+               FROM cleaned_licences AS l INDEXED BY idx_commune
+               JOIN cleaned_federations AS f ON l.code_federation = f.code
+               WHERE l.code_commune = ? AND f.famille IN (?, ?)
+               GROUP BY l.annee, f.nom""",
+            connexion,
+            params=(code_commune, *FAMILLES_UNISPORT),
+        )
+    donnees["sport"] = donnees["federation"].apply(nom_sport)
+    return donnees
+
+
+def licences_par_annee(
+    niveau: str,
+    code: str | None = None,
+    exclusions: list[str] | None = None,
+) -> pd.DataFrame:
+    """Nombre de licences par année pour la France, une région, un département ou une commune."""
+    if niveau == "commune":
+        donnees = licences_commune(code)
+    else:
+        donnees = resume_departements()
+        if niveau == "region":
+            donnees = donnees.loc[donnees["code_region"] == code]
+        elif niveau == "departement":
+            donnees = donnees.loc[donnees["code_departement"] == code]
+
+    if exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+
+    return donnees.groupby("annee", as_index=False)["licences"].sum()

@@ -9,6 +9,7 @@ from src.components.carte import (
     noms_regions, noms_departements, contours_communes_departement,
 )
 from src.components.classement import creer_classement
+from src.components.evolution import creer_evolution
 from src.utils.indicateurs import liste_sports_uniques
 
 
@@ -42,8 +43,8 @@ def creer_page() -> html.Div:
                             html.Li("Choisissez une année et, si vous le souhaitez, des sports à exclure "
                                     "(par exemple le football, présent partout)."),
                             html.Li("Cliquez sur une région : la carte affiche le sport dominant de chacun "
-                                    "de ses départements, et le classement des 10 premiers sports de la "
-                                    "région apparaît à droite."),
+                                    "de ses départements. À droite, l'évolution du nombre de licences de "
+                                    "la zone choisie ; en dessous, le classement de ses 10 premiers sports."),
                             html.Li("Cliquez sur un département pour voir ses communes, puis sur une commune pour son classement."),
                             html.Li("Utilisez « Retour » pour remonter un niveau."),
                             html.Li("Le premier affichage d'une année ou des communes d'un département "
@@ -121,11 +122,11 @@ def creer_page() -> html.Div:
             dcc.Store(id="departement-selectionne", data=None),
             dcc.Store(id="commune-selectionnee", data=None),
 
-            # Carte + classement
+            # Carte à gauche, évolution du nombre de licences à droite
             html.Div(
                 [
                     html.Div(
-                        [   
+                        [
                             html.Button(
                                 "← Retour",
                                 id="bouton-retour",
@@ -152,17 +153,20 @@ def creer_page() -> html.Div:
 
                     html.Div(
                         [
-                            html.H3("Classement des sports"),
+                            html.H3("Évolution du nombre de licences"),
 
                             html.P(
-                                id="nom-region",
-                                children="Cliquez sur une région.",
+                                id="nom-zone-evolution",
+                                children="France entière",
                             ),
 
-                            dcc.Graph(
-                                id="classement-sports",
-                                config={"displaylogo": False},
-                                style={"width": "100%"},
+                            dcc.Loading(
+                                dcc.Graph(
+                                    id="evolution-licences",
+                                    config={"displaylogo": False},
+                                    style={"width": "100%"},
+                                ),
+                                type="circle",
                             ),
                         ],
                         style={
@@ -178,6 +182,25 @@ def creer_page() -> html.Div:
                     "flexWrap": "wrap",
                 },
             ),
+
+            # Classement des sports, sous la carte
+            html.Div(
+                [
+                    html.H3("Classement des sports"),
+
+                    html.P(
+                        id="nom-region",
+                        children="Cliquez sur une région.",
+                    ),
+
+                    dcc.Graph(
+                        id="classement-sports",
+                        config={"displaylogo": False},
+                        style={"width": "100%"},
+                    ),
+                ],
+                style={"marginTop": "30px"},
+            ),
         ],
         style={
             "maxWidth": "1600px",
@@ -191,6 +214,21 @@ def creer_page() -> html.Div:
 def enregistrer_callbacks(app: Dash) -> None:
     """Relie les filtres et la carte aux graphiques de la page."""
     regions = noms_regions()
+
+    def zone_selectionnee(region: str | None, departement: str | None,
+                          commune: str | None) -> tuple[str, str | None, str]:
+        """Niveau, code et nom de la zone la plus précise sélectionnée."""
+        if commune:
+            zones = contours_communes_departement(departement)
+            noms = {str(z["properties"]["code"]): z["properties"].get("nom", commune)
+                    for z in zones["features"]}
+            return "commune", commune, noms.get(commune, commune)
+        if departement:
+            return "departement", departement, noms_departements(region).get(departement, departement)
+        if region:
+            return "region", region, regions.get(region, region)
+        return "france", None, "France entière"
+
 
     @app.callback(
         Output("carte-sports", "figure"),
@@ -261,15 +299,23 @@ def enregistrer_callbacks(app: Dash) -> None:
         """Classement de la commune, du département ou de la région sélectionnée."""
         if not region:
             return go.Figure(), "Cliquez sur une région pour afficher son classement."
-        if commune:
-            zones = contours_communes_departement(departement)
-            noms = {str(z["properties"]["code"]): z["properties"].get("nom", commune)
-                    for z in zones["features"]}
-            niveau, code, nom = "commune", commune, noms.get(commune, commune)
-        elif departement:
-            niveau, code = "departement", departement
-            nom = noms_departements(region).get(departement, departement)
-        else:
-            niveau, code, nom = "region", region, regions.get(region, region)
+        niveau, code, nom = zone_selectionnee(region, departement, commune)
         figure = creer_classement(annee, code, exclusions, niveau=niveau)
         return figure, f"Top 10 — {nom} ({annee})"
+
+    @app.callback(
+        Output("evolution-licences", "figure"),
+        Output("nom-zone-evolution", "children"),
+        Input("region-selectionnee", "data"),
+        Input("departement-selectionne", "data"),
+        Input("commune-selectionnee", "data"),
+        Input("filtre-annee", "value"),
+        Input("sports-exclus", "value"),
+    )
+    def actualiser_evolution(region: str | None, departement: str | None,
+                             commune: str | None, annee: int,
+                             exclusions: list[str]):
+        """Licences par année pour la zone sélectionnée (la France par défaut)."""
+        niveau, code, nom = zone_selectionnee(region, departement, commune)
+        figure = creer_evolution(niveau, code, exclusions, annee)
+        return figure, f"{nom}, de 2012 à 2023"
