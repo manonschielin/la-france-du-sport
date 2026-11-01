@@ -324,15 +324,31 @@ def code_ville(code_commune: str) -> str:
 
 @lru_cache(maxsize=3)
 def populations(niveau: str) -> pd.DataFrame:
-    """Population par région, département ou commune (colonnes : code, population)."""
+    """Population par territoire, en rattachant les arrondissements aux villes."""
     colonne = {"region": "code_region", "departement": "code_departement",
                "commune": "code_commune"}[niveau]
     with sqlite3.connect(config.DB_PATH) as connexion:
-        return pd.read_sql_query(
-            f"SELECT {colonne} AS code, SUM(population) AS population "
-            f"FROM cleaned_communes GROUP BY {colonne}",
+        donnees = pd.read_sql_query(
+            f"SELECT {colonne} AS code, population FROM cleaned_communes",
             connexion,
         )
+    donnees["code"] = donnees["code"].astype(str)
+    donnees["population"] = pd.to_numeric(
+        donnees["population"], errors="coerce"
+    )
+    if niveau == "commune":
+        # Si la ville et ses arrondissements coexistent, préférer le total ville.
+        villes = {"75056", "69123", "13055"}
+        presents = set(donnees.loc[donnees["code"].isin(villes), "code"])
+        donnees["code_origine"] = donnees["code"]
+        donnees["code"] = donnees["code"].map(code_ville)
+        donnees = donnees.loc[
+            ~(
+                donnees["code"].isin(presents)
+                & (donnees["code_origine"] != donnees["code"])
+            )
+        ]
+    return donnees.groupby("code", as_index=False)["population"].sum(min_count=1)
 
 
 def codes_federations(sport: str) -> list[str]:
@@ -345,6 +361,8 @@ def codes_federations(sport: str) -> list[str]:
 def licences_sport_communes(annee: int, sport: str) -> pd.DataFrame:
     """Licences d'un sport dans chaque commune pour une année (arrondissements regroupés)."""
     codes = codes_federations(sport)
+    if not codes:
+        return pd.DataFrame(columns=["code", "licences"])
     marqueurs = ", ".join("?" * len(codes))
     with sqlite3.connect(config.DB_PATH) as connexion:
         donnees = pd.read_sql_query(
@@ -360,10 +378,13 @@ def licences_sport_communes(annee: int, sport: str) -> pd.DataFrame:
 
 
 def licences_pour_1000(annee: int, sport: str, niveau: str) -> pd.DataFrame:
-    """Licences d'un sport pour 1 000 habitants, par région, département ou commune.
+    """Licences du sport pour 1 000 habitants, codes sans données compris.
 
-    Colonnes : code, licences, population, taux (vide si la population est trop petite).
+    Le taux est absent si aucune licence n'est renseignée, si la population
+    manque ou si la commune compte moins de 200 habitants.
     """
+    if niveau not in {"region", "departement", "commune"}:
+        raise ValueError(f"Échelle inconnue : {niveau}")
     if niveau == "commune":
         licences = licences_sport_communes(annee, sport)
     else:
@@ -373,7 +394,20 @@ def licences_pour_1000(annee: int, sport: str, niveau: str) -> pd.DataFrame:
         licences = (resume.groupby(colonne, as_index=False)["licences"].sum()
                     .rename(columns={colonne: "code"}))
 
-    donnees = licences.merge(populations(niveau), on="code", how="inner")
+    licences = licences.copy()
+    population = populations(niveau).copy()
+    licences["code"] = licences["code"].astype(str)
+    population["code"] = population["code"].astype(str)
+    if niveau == "region":
+        licences["code"] = licences["code"].str.zfill(2)
+        population["code"] = population["code"].str.zfill(2)
+
+    donnees = population.merge(licences, on="code", how="outer")
     donnees["taux"] = (donnees["licences"] / donnees["population"] * 1000).round(1)
-    donnees.loc[donnees["population"] < POPULATION_MINIMUM, "taux"] = None
-    return donnees.sort_values("taux", ascending=False).reset_index(drop=True)
+    invalide = (donnees["population"].isna()
+                | (donnees["population"] <= 0)
+                | donnees["licences"].isna())
+    if niveau == "commune":
+        invalide |= donnees["population"] < POPULATION_MINIMUM
+    donnees.loc[invalide, "taux"] = float("nan")
+    return donnees.sort_values("taux", ascending=False, na_position="last").reset_index(drop=True)

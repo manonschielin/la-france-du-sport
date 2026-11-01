@@ -44,6 +44,81 @@ def noms_regions() -> dict[str, str]:
     }
 
 
+def creer_carte_taux(annee: int, sport: str, niveau: str,
+                     code_region: str | None = None,
+                     code_departement: str | None = None) -> go.Figure:
+    """Carte d'un sport en rouge selon son taux de licences / 1 000 habitants."""
+    import pandas as pd
+    from src.utils.indicateurs import licences_pour_1000
+
+    if niveau == "region":
+        geojson = contours_regions()
+        titre_zone = "région"
+    elif niveau == "departement":
+        if code_region is None:
+            raise ValueError("Région requise pour les départements")
+        geojson = contours_departements_region(code_region)
+        titre_zone = "département"
+    elif niveau == "commune":
+        if code_departement is None:
+            raise ValueError("Département requis pour les communes")
+        geojson = contours_communes_departement(code_departement)
+        titre_zone = "commune"
+    else:
+        raise ValueError(f"Échelle inconnue : {niveau}")
+
+    codes = [str(z["properties"]["code"]) for z in geojson["features"]]
+    noms = [z["properties"].get("nom", code)
+            for z, code in zip(geojson["features"], codes)]
+    donnees = licences_pour_1000(annee, sport, niveau)
+    valeurs = donnees.set_index("code").reindex(codes)
+    # Tracé gris couvrant TOUTES les zones (y compris sans licences).
+    figure = go.Figure()
+    if codes:
+        figure.add_trace(go.Choropleth(
+            geojson=geojson, featureidkey="properties.code",
+            locations=codes, z=[0] * len(codes),
+            colorscale=[[0, "#e5e7eb"], [1, "#e5e7eb"]],
+            showscale=False, marker_line_color="white", marker_line_width=0.6,
+            text=noms, name="Sans données", showlegend=False,
+            hovertemplate="<b>%{text}</b><br>Taux indisponible<extra></extra>",
+        ))
+        valides = valeurs["taux"].notna().to_numpy()
+        if valides.any():
+            codes_valides = [c for c, ok in zip(codes, valides) if ok]
+            noms_valides = [n for n, ok in zip(noms, valides) if ok]
+            lignes = valeurs.loc[codes_valides]
+            figure.add_trace(go.Choropleth(
+                geojson=geojson, featureidkey="properties.code",
+                locations=codes_valides, z=lignes["taux"].astype(float),
+                colorscale=[[0, "#fff5f0"], [0.5, "#fb6a4a"], [1, "#99000d"]],
+                colorbar={"title": "Licences / 1 000 hab."},
+                marker_line_color="white", marker_line_width=0.6,
+                text=noms_valides,
+                customdata=lignes[["licences", "population"]].to_numpy(),
+                hovertemplate=("<b>%{text}</b><br>Taux : %{z:.1f} / 1 000 hab."
+                               "<br>Licences : %{customdata[0]:,.0f}"
+                               "<br>Population : %{customdata[1]:,.0f}<extra></extra>"),
+                name=sport,
+            ))
+    else:
+        figure.add_annotation(text="Aucun contour disponible", showarrow=False)
+
+    options = {"projection_type": "mercator", "visible": False}
+    if niveau == "region":
+        options.update(fitbounds=False, lonaxis_range=[-6, 10],
+                       lataxis_range=[41, 52])
+    else:
+        options["fitbounds"] = "locations" if codes else False
+    figure.update_geos(**options)
+    figure.update_layout(
+        title=f"{sport} — licences pour 1 000 habitants par {titre_zone} ({annee})",
+        height=650, margin={"l": 0, "r": 0, "t": 55, "b": 0},
+        clickmode="event", uirevision=f"taux-{niveau}-{code_region}-{code_departement}",
+    )
+    return figure
+
+
 def creer_carte(
     annee: int,
     exclusions: list[str] | None = None,

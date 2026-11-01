@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 import config
 from src.components.carte import (
-    creer_carte, creer_carte_departements, creer_carte_communes,
+    creer_carte, creer_carte_departements, creer_carte_communes, creer_carte_taux,
     noms_regions, noms_departements, contours_communes_departement,
 )
 from src.components.classement import creer_classement
@@ -83,6 +83,21 @@ def creer_page() -> html.Div:
                             "width": "180px",
                             "flexShrink": 0,
                         },
+                    ),
+
+                    html.Div(
+                        [
+                            html.Label("Sport à analyser"),
+                            dcc.Dropdown(
+                                id="sport-analyse",
+                                options=[{"label": "Tous les sports", "value": ""}]
+                                        + options_sports,
+                                value="",
+                                searchable=True,
+                                clearable=False,
+                            ),
+                        ],
+                        style={"flex": 1, "minWidth": "230px"},
                     ),
 
                     html.Div(
@@ -234,12 +249,21 @@ def enregistrer_callbacks(app: Dash) -> None:
         Output("carte-sports", "figure"),
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
+        Input("sport-analyse", "value"),
         Input("region-selectionnee", "data"),
         Input("departement-selectionne", "data"),
     )
-    def actualiser_carte(annee: int, exclusions: list[str],
+    def actualiser_carte(annee: int, exclusions: list[str], sport: str,
                          code_region: str | None, code_departement: str | None):
-        """France, départements ou communes selon la profondeur de navigation."""
+        """Carte dominante par défaut, dégradé de rouge pour un sport choisi."""
+        if sport:
+            if code_departement:
+                return creer_carte_taux(annee, sport, "commune",
+                                       code_departement=code_departement)
+            if code_region:
+                return creer_carte_taux(annee, sport, "departement",
+                                       code_region=code_region)
+            return creer_carte_taux(annee, sport, "region")
         if code_departement:
             return creer_carte_communes(annee, code_departement, exclusions)
         if code_region:
