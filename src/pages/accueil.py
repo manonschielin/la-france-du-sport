@@ -174,6 +174,10 @@ def creer_page() -> html.Div:
                                 id="nom-zone-evolution",
                                 children="France entière",
                             ),
+                            html.P(
+                                id="note-evolution",
+                                style={"fontSize": "13px", "color": "#6b7280"},
+                            ),
 
                             dcc.Loading(
                                 dcc.Graph(
@@ -330,16 +334,26 @@ def enregistrer_callbacks(app: Dash) -> None:
     @app.callback(
         Output("evolution-licences", "figure"),
         Output("nom-zone-evolution", "children"),
+        Output("note-evolution", "children"),
         Input("region-selectionnee", "data"),
         Input("departement-selectionne", "data"),
         Input("commune-selectionnee", "data"),
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
+        Input("sport-analyse", "value"),
     )
     def actualiser_evolution(region: str | None, departement: str | None,
                              commune: str | None, annee: int,
-                             exclusions: list[str]):
-        """Licences par année pour la zone sélectionnée (la France par défaut)."""
+                             exclusions: list[str], sport: str | None):
+        """Évolution des licences filtrée par sport et par territoire."""
         niveau, code, nom = zone_selectionnee(region, departement, commune)
-        figure = creer_evolution(niveau, code, exclusions, annee)
-        return figure, f"{nom}, de 2012 à 2023"
+        figure = creer_evolution(niveau, code, exclusions, annee, sport=sport or None)
+        titre = f"{nom} — {sport}" if sport else f"{nom} — Tous les sports"
+        note = (
+            "Une année sans barre signifie qu'aucune licence n'est renseignée "
+            "pour ce sport et ce territoire cette année-là ; ce n'est pas "
+            "nécessairement zéro licence. Les fédérations disponibles peuvent "
+            "changer selon les années (notamment en 2012)."
+            if sport else ""
+        )
+        return figure, f"{titre}, de 2012 à 2023", note

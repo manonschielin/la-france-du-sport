@@ -10,9 +10,10 @@ def creer_evolution(
     code: str | None,
     exclusions: list[str],
     annee_choisie: int,
+    sport: str | None = None,
 ) -> go.Figure:
     """Licences par année de la zone choisie ; l'année du filtre est mise en avant."""
-    donnees = licences_par_annee(niveau, code, exclusions)
+    donnees = licences_par_annee(niveau, code, exclusions, sport=sport)
 
     figure = go.Figure()
 

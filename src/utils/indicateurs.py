@@ -289,8 +289,9 @@ def licences_par_annee(
     niveau: str,
     code: str | None = None,
     exclusions: list[str] | None = None,
+    sport: str | None = None,
 ) -> pd.DataFrame:
-    """Nombre de licences par année pour la France, une région, un département ou une commune."""
+    """Licences par année et par territoire, éventuellement limitées à un sport."""
     if niveau == "commune":
         donnees = licences_commune(code)
     else:
@@ -300,7 +301,10 @@ def licences_par_annee(
         elif niveau == "departement":
             donnees = donnees.loc[donnees["code_departement"] == code]
 
-    if exclusions:
+    if sport:
+        # Le sport analysé reste prioritaire sur les exclusions générales.
+        donnees = donnees.loc[donnees["sport"] == sport]
+    elif exclusions:
         donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
 
     return donnees.groupby("annee", as_index=False)["licences"].sum()
