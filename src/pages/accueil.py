@@ -10,6 +10,7 @@ from src.components.carte import (
 )
 from src.components.classement import creer_classement
 from src.components.evolution import creer_evolution
+from src.components.pyramide import creer_pyramide
 from src.utils.indicateurs import liste_sports_uniques
 
 
@@ -43,8 +44,9 @@ def creer_page() -> html.Div:
                             html.Li("Choisissez une année et, si vous le souhaitez, des sports à exclure "
                                     "(par exemple le football, présent partout)."),
                             html.Li("Cliquez sur une région : la carte affiche le sport dominant de chacun "
-                                    "de ses départements. À droite, l'évolution du nombre de licences de "
-                                    "la zone choisie ; en dessous, le classement de ses 10 premiers sports."),
+                                    "de ses départements. À droite, l'évolution du nombre de licences ; "
+                                    "en dessous, le classement des 10 premiers sports et la pyramide "
+                                    "des âges des licenciés de la zone choisie."),
                             html.Li("Cliquez sur un département pour voir ses communes, puis sur une commune pour son classement."),
                             html.Li("Utilisez « Retour » pour remonter un niveau."),
                             html.Li("Le premier affichage d'une année ou des communes d'un département "
@@ -202,23 +204,55 @@ def creer_page() -> html.Div:
                 },
             ),
 
-            # Classement des sports, sous la carte
+            # Classement à gauche, pyramide des âges à droite, sous la carte
             html.Div(
                 [
-                    html.H3("Classement des sports"),
+                    html.Div(
+                        [
+                            html.H3("Classement des sports"),
 
-                    html.P(
-                        id="nom-region",
-                        children="Cliquez sur une région.",
+                            html.P(
+                                id="nom-region",
+                                children="Cliquez sur une région.",
+                            ),
+
+                            dcc.Graph(
+                                id="classement-sports",
+                                config={"displaylogo": False},
+                                style={"width": "100%"},
+                            ),
+                        ],
+                        style={"flex": "1 1 0", "minWidth": "430px"},
                     ),
 
-                    dcc.Graph(
-                        id="classement-sports",
-                        config={"displaylogo": False},
-                        style={"width": "100%"},
+                    html.Div(
+                        [
+                            html.H3("Pyramide des âges des licenciés"),
+
+                            html.P(
+                                id="nom-zone-pyramide",
+                                children="France entière",
+                            ),
+
+                            dcc.Loading(
+                                dcc.Graph(
+                                    id="pyramide-ages",
+                                    config={"displaylogo": False},
+                                    style={"width": "100%"},
+                                ),
+                                type="circle",
+                            ),
+                        ],
+                        style={"flex": "1 1 0", "minWidth": "430px"},
                     ),
                 ],
-                style={"marginTop": "30px"},
+                style={
+                    "display": "flex",
+                    "gap": "25px",
+                    "alignItems": "flex-start",
+                    "flexWrap": "wrap",
+                    "marginTop": "30px",
+                },
             ),
         ],
         style={
@@ -357,3 +391,22 @@ def enregistrer_callbacks(app: Dash) -> None:
             if sport else ""
         )
         return figure, f"{titre}, de 2012 à 2023", note
+
+    @app.callback(
+        Output("pyramide-ages", "figure"),
+        Output("nom-zone-pyramide", "children"),
+        Input("region-selectionnee", "data"),
+        Input("departement-selectionne", "data"),
+        Input("commune-selectionnee", "data"),
+        Input("filtre-annee", "value"),
+        Input("sports-exclus", "value"),
+        Input("sport-analyse", "value"),
+    )
+    def actualiser_pyramide(region: str | None, departement: str | None,
+                            commune: str | None, annee: int,
+                            exclusions: list[str], sport: str | None):
+        """Pyramide des âges F/H de la zone, de l'année et du sport choisis."""
+        niveau, code, nom = zone_selectionnee(region, departement, commune)
+        figure = creer_pyramide(annee, niveau, code, sport or None, exclusions)
+        titre = f"{nom} — {sport}" if sport else f"{nom} — Tous les sports"
+        return figure, f"{titre} ({annee})"

@@ -415,3 +415,98 @@ def licences_pour_1000(annee: int, sport: str, niveau: str) -> pd.DataFrame:
         invalide |= donnees["population"] < POPULATION_MINIMUM
     donnees.loc[invalide, "taux"] = float("nan")
     return donnees.sort_values("taux", ascending=False, na_position="last").reset_index(drop=True)
+
+
+TRANCHES_AGE = ["0_4", "5_9", "10_14", "15_19", "20_29", "30_44", "45_59", "60_74", "75"]
+LIBELLES_AGE = ["0-4 ans", "5-9 ans", "10-14 ans", "15-19 ans", "20-29 ans",
+                "30-44 ans", "45-59 ans", "60-74 ans", "75 ans et +"]
+COLONNES_AGE = [f"{sexe}_{tranche}" for sexe in ("f", "h") for tranche in TRANCHES_AGE]
+
+
+def _ajouter_sports(donnees: pd.DataFrame) -> pd.DataFrame:
+    """Ajoute le nom du sport et ne garde que les fédérations unisport."""
+    sports = liste_sports()[["code", "sport"]].rename(columns={"code": "code_federation"})
+    return donnees.merge(sports, on="code_federation", how="inner")
+
+
+@lru_cache(maxsize=12)
+def ages_departements(annee: int) -> pd.DataFrame:
+    """Licences par département, fédération, sexe et tranche d'âge pour une année."""
+    sommes = ", ".join(f"SUM({colonne}) AS {colonne}" for colonne in COLONNES_AGE)
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            f"""SELECT a.*, d.code_region
+                FROM (
+                    SELECT code_departement, code_federation, {sommes}
+                    FROM cleaned_licences
+                    WHERE annee = ?
+                    GROUP BY code_departement, code_federation
+                ) AS a
+                LEFT JOIN (
+                    SELECT code_departement, MIN(code_region) AS code_region
+                    FROM cleaned_communes
+                    GROUP BY code_departement
+                ) AS d ON a.code_departement = d.code_departement""",
+            connexion,
+            params=(annee,),
+        )
+    return _ajouter_sports(donnees)
+
+
+def codes_licences_commune(code_commune: str) -> list[str]:
+    """Codes à chercher pour une commune : Paris, Lyon et Marseille ont leurs arrondissements."""
+    if code_commune == "75056":
+        return [code_commune] + [f"751{n:02d}" for n in range(1, 21)]
+    if code_commune == "69123":
+        return [code_commune] + [f"6938{n}" for n in range(1, 10)]
+    if code_commune == "13055":
+        return [code_commune] + [f"132{n:02d}" for n in range(1, 17)]
+    return [code_commune]
+
+
+@lru_cache(maxsize=50)
+def ages_commune(annee: int, code_commune: str) -> pd.DataFrame:
+    """Licences d'une commune par fédération, sexe et tranche d'âge pour une année."""
+    codes = codes_licences_commune(code_commune)
+    sommes = ", ".join(f"SUM({colonne}) AS {colonne}" for colonne in COLONNES_AGE)
+    marqueurs = ", ".join("?" * len(codes))
+    with sqlite3.connect(config.DB_PATH) as connexion:
+        donnees = pd.read_sql_query(
+            f"""SELECT code_federation, {sommes}
+                FROM cleaned_licences INDEXED BY idx_commune
+                WHERE code_commune IN ({marqueurs}) AND annee = ?
+                GROUP BY code_federation""",
+            connexion,
+            params=(*codes, annee),
+        )
+    return _ajouter_sports(donnees)
+
+
+def pyramide_ages(
+    annee: int,
+    niveau: str,
+    code: str | None = None,
+    sport: str | None = None,
+    exclusions: list[str] | None = None,
+) -> pd.DataFrame:
+    """Nombre de licences par tranche d'âge, femmes et hommes, pour la zone choisie."""
+    if niveau == "commune":
+        donnees = ages_commune(annee, code)
+    else:
+        donnees = ages_departements(annee)
+        if niveau == "region":
+            donnees = donnees.loc[donnees["code_region"] == code]
+        elif niveau == "departement":
+            donnees = donnees.loc[donnees["code_departement"] == code]
+
+    if sport:
+        donnees = donnees.loc[donnees["sport"] == sport]
+    elif exclusions:
+        donnees = donnees.loc[~donnees["sport"].isin(exclusions)]
+
+    sommes = donnees[COLONNES_AGE].sum()
+    return pd.DataFrame({
+        "tranche": LIBELLES_AGE,
+        "femmes": [int(sommes[f"f_{tranche}"]) for tranche in TRANCHES_AGE],
+        "hommes": [int(sommes[f"h_{tranche}"]) for tranche in TRANCHES_AGE],
+    })
