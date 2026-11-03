@@ -4,14 +4,15 @@ from dash import Dash, Input, Output, dcc, html
 import pandas as pd
 import plotly.graph_objects as go
 
+from src.utils import couleurs
 from src.utils.tendances import (
     ANNEES, SEUIL_LICENCES, effet_covid, evolution_sports,
     sports_comparables, sports_par_defaut, variations,
 )
 
-BLEU = "#002E85"
-VERT = "#27865b"
-ROUGE = "#d04d54"
+BLEU = couleurs.BLEU_MARINE
+VERT = couleurs.POSITIF
+ROUGE = couleurs.NEGATIF
 
 
 def _message(texte: str) -> go.Figure:
@@ -43,8 +44,8 @@ def creer_variations(debut: int, fin: int) -> go.Figure:
     fig.update_layout(height=max(420, len(selection) * 29 + 105),
                       xaxis_title="Variation des licences (%)", yaxis_title=None,
                       margin={"l": 165, "r": 30, "t": 10, "b": 50},
-                      plot_bgcolor="white", showlegend=False)
-    fig.update_xaxes(zeroline=True, zerolinecolor="#374151", ticksuffix=" %")
+                      plot_bgcolor=couleurs.BLANC, showlegend=False)
+    fig.update_xaxes(zeroline=True, zerolinecolor=couleurs.BLEU_MARINE, ticksuffix=" %")
     return fig
 
 
@@ -65,9 +66,9 @@ def creer_covid() -> go.Figure:
     fig.update_layout(barmode="group", height=430,
                       margin={"l": 65, "r": 20, "t": 30, "b": 115},
                       yaxis_title="Variation des licences (%)",
-                      xaxis_title=None, plot_bgcolor="white")
+                      xaxis_title=None, plot_bgcolor=couleurs.BLANC)
     fig.update_xaxes(tickangle=-35)
-    fig.update_yaxes(ticksuffix=" %", zeroline=True, zerolinecolor="#374151")
+    fig.update_yaxes(ticksuffix=" %", zeroline=True, zerolinecolor=couleurs.BLEU_MARINE)
     return fig
 
 
@@ -88,7 +89,8 @@ def creer_comparaison(sports: list[str]) -> go.Figure:
                 hovertemplate="%{x} : %{y:,.0f} licences<extra>" + sport + "</extra>",
             ))
     fig.update_layout(height=420, xaxis_title="Année", yaxis_title="Nombre de licences",
-                      margin={"l": 70, "r": 20, "t": 20, "b": 55}, plot_bgcolor="white")
+                      margin={"l": 70, "r": 20, "t": 20, "b": 55}, plot_bgcolor=couleurs.BLANC,
+                      colorway=couleurs.SERIES)
     fig.update_xaxes(tickmode="array", tickvals=list(ANNEES))
     return fig
 
@@ -112,12 +114,12 @@ def creer_page() -> html.Div:
         dcc.Graph(id="tendances-variations", figure=creer_variations(2012, 2023)),
         html.P(f"Seuls les sports avec au moins {SEUIL_LICENCES:,} licences à l'année de départ "
                f"et présents aux deux dates sont comparés.".replace(",", " "),
-               style={"fontSize": "13px", "color": "#555"}),
+               style={"fontSize": "13px", "color": couleurs.BLEU_MARINE}),
         html.H3("L'effet du Covid : baisse et reprise"),
         dcc.Graph(id="tendances-covid", figure=creer_covid()),
         html.P("Variations 2019 → 2021 puis 2021 → 2023, pour les grandes disciplines suivies "
                "aux trois dates. Ce graphique ne mesure pas à lui seul l'effet causal du Covid.",
-               style={"fontSize": "13px", "color": "#555"}),
+               style={"fontSize": "13px", "color": couleurs.BLEU_MARINE}),
         html.H3("Comparer l'évolution de plusieurs sports"),
         html.Label("Choisir de 2 à 5 sports"),
         dcc.Dropdown(id="tendances-sports",
@@ -128,7 +130,7 @@ def creer_page() -> html.Div:
         html.P("Les points absents ne sont pas interprétés comme zéro licence. "
                "Attention : certaines fédérations ne sont pas renseignées sur toute la période "
                "(notamment en 2012).",
-               style={"fontSize": "13px", "color": "#555"}),
+               style={"fontSize": "13px", "color": couleurs.BLEU_MARINE}),
     ], style={"maxWidth": "1250px", "margin": "auto", "lineHeight": "1.5"})
 
 

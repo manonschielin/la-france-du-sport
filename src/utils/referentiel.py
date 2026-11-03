@@ -6,6 +6,8 @@ import hashlib
 import re
 import unicodedata
 
+from src.utils.couleurs import CATEGORIE_1
+
 
 NOMS_COURTS = {
     "football": "Football",
@@ -70,6 +72,9 @@ def nom_sport(nom_federation: str) -> str:
 def couleur_sport(code_federation: str) -> str:
     """Attribue une couleur stable à un code de fédération."""
     code = str(code_federation)
+    if code in ("Football", "111"):
+        # Le football, présent partout, prend une couleur de la palette.
+        return CATEGORIE_1
     empreinte = hashlib.sha256(code.encode("utf-8")).digest()
 
     teinte = int.from_bytes(empreinte[:4], "big") / (2**32)

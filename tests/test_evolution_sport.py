@@ -7,7 +7,7 @@ import pytest
 
 import config
 from src.components.evolution import creer_evolution
-from src.utils import indicateurs
+from src.utils import couleurs, indicateurs
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def test_figure_sport_et_annees_manquantes(historique):
     fig = creer_evolution("france", None, [], 2023, sport="Tennis")
     assert list(fig.data[0].x) == [2021, 2023]
     assert list(fig.data[0].y) == [25, 37]
-    assert list(fig.data[0].marker.color) == ["#c7d2fe", "#6366f1"]
+    assert list(fig.data[0].marker.color) == [couleurs.UNE_COULEUR, couleurs.MISE_EN_AVANT]
 
 
 def test_sport_inconnu_figure_vide(historique):

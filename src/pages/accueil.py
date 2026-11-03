@@ -2,12 +2,14 @@
 
 from dash import Dash, dcc, html
 
+from src.utils import couleurs
 from src.utils.indicateurs import chiffres_cles
 
 STYLE_CARTE = {
     "flex": "1 1 0",
     "minWidth": "180px",
-    "backgroundColor": "#eef2ff",
+    "backgroundColor": couleurs.BLANC,
+    "border": f"1px solid {couleurs.BORDURES}",
     "borderRadius": "8px",
     "padding": "16px",
     "textAlign": "center",
@@ -18,8 +20,8 @@ def creer_chiffre(valeur: str, legende: str) -> html.Div:
     """Une carte avec un chiffre clé et sa légende."""
     return html.Div(
         [
-            html.Div(valeur, style={"fontSize": "28px", "fontWeight": "bold", "color": "#002E85"}),
-            html.Div(legende, style={"fontSize": "14px", "color": "#374151"}),
+            html.Div(valeur, style={"fontSize": "28px", "fontWeight": "bold", "color": couleurs.BLEU_MARINE}),
+            html.Div(legende, style={"fontSize": "14px", "color": couleurs.BLEU_MARINE}),
         ],
         style=STYLE_CARTE,
     )
@@ -79,7 +81,7 @@ def creer_page() -> html.Div:
             html.P(
                 "Les chiffres portent sur les fédérations unisport (olympiques et non olympiques) ; "
                 "les fédérations multisports et scolaires ne sont pas comptées.",
-                style={"fontSize": "13px", "color": "#6b7280"},
+                style={"fontSize": "13px", "color": couleurs.BLEU_MARINE},
             ),
         ],
     )

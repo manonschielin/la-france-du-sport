@@ -11,6 +11,7 @@ import config
 from src.utils.indicateurs import (
     sport_numero_un, sport_numero_un_departements, sport_numero_un_communes,
 )
+from src.utils import couleurs as palette
 from src.utils.referentiel import couleur_sport
 
 
@@ -79,8 +80,8 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
         figure.add_trace(go.Choropleth(
             geojson=geojson, featureidkey="properties.code",
             locations=codes, z=[0] * len(codes),
-            colorscale=[[0, "#e5e7eb"], [1, "#e5e7eb"]],
-            showscale=False, marker_line_color="white", marker_line_width=0.6,
+            colorscale=[[0, palette.GRIS_CLAIR], [1, palette.GRIS_CLAIR]],
+            showscale=False, marker_line_color=palette.BLANC, marker_line_width=0.6,
             text=noms, name="Sans données", showlegend=False,
             hovertemplate="<b>%{text}</b><br>Taux indisponible<extra></extra>",
         ))
@@ -92,9 +93,9 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
             figure.add_trace(go.Choropleth(
                 geojson=geojson, featureidkey="properties.code",
                 locations=codes_valides, z=lignes["taux"].astype(float),
-                colorscale=[[0, "#fff5f0"], [0.5, "#fb6a4a"], [1, "#99000d"]],
+                colorscale=palette.ECHELLE_PLOTLY,
                 colorbar={"title": "Licences / 1 000 hab."},
-                marker_line_color="white", marker_line_width=0.6,
+                marker_line_color=palette.BLANC, marker_line_width=0.6,
                 text=noms_valides,
                 customdata=lignes[["licences", "population"]].to_numpy(),
                 hovertemplate=("<b>%{text}</b><br>Taux : %{z:.1f} / 1 000 hab."
@@ -105,7 +106,7 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
     else:
         figure.add_annotation(text="Aucun contour disponible", showarrow=False)
 
-    options = {"projection_type": "mercator", "visible": False}
+    options = {"projection_type": "mercator", "visible": False, "bgcolor": palette.FOND_CARTES_GEO}
     if niveau == "region":
         options.update(fitbounds=False, lonaxis_range=[-6, 10],
                        lataxis_range=[41, 52])
@@ -114,7 +115,7 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
     figure.update_geos(**options)
     figure.update_layout(
         title=f"{sport} — licences pour 1 000 habitants par {titre_zone} ({annee})",
-        height=650, margin={"l": 0, "r": 0, "t": 55, "b": 0},
+        height=650, paper_bgcolor=palette.FOND_CARTES_GEO, margin={"l": 0, "r": 0, "t": 55, "b": 0},
         clickmode="event", uirevision=f"taux-{niveau}-{code_region}-{code_departement}",
     )
     return figure
@@ -173,7 +174,7 @@ def creer_carte(
                 "<br>Licences : %{customdata[2]:,.0f}"
                 "<extra></extra>"
             ),
-            marker_line_color="white",
+            marker_line_color=palette.BLANC,
             marker_line_width=1,
         )
 
@@ -183,11 +184,13 @@ def creer_carte(
         lonaxis_range=[-6, 10],
         lataxis_range=[41, 52],
         visible=False,
+        bgcolor=palette.FOND_CARTES_GEO,
     )
 
     figure.update_layout(
         title=f"Sports dominants par région — {annee}",
         height=650,
+        paper_bgcolor=palette.FOND_CARTES_GEO,
         margin={"l": 0, "r": 0, "t": 55, "b": 0},
         legend_title_text="Sport dominant",
         clickmode="event",
@@ -268,7 +271,7 @@ def creer_carte_departements(
                 "<br>Licences : %{customdata[2]:,.0f}"
                 "<extra></extra>"
             ),
-            marker_line_color="white",
+            marker_line_color=palette.BLANC,
             marker_line_width=1,
         )
 
@@ -277,11 +280,13 @@ def creer_carte_departements(
         fitbounds="locations",
         projection_type="mercator",
         visible=False,
+        bgcolor=palette.FOND_CARTES_GEO,
     )
 
     figure.update_layout(
         title=f"Sports dominants par département — {noms_regions().get(code_region, code_region)} ({annee})",
         height=650,
+        paper_bgcolor=palette.FOND_CARTES_GEO,
         margin={"l": 0, "r": 0, "t": 55, "b": 0},
         legend_title_text="Sport dominant",
         clickmode="event",
@@ -334,8 +339,8 @@ def creer_carte_communes(annee: int, code_departement: str,
         figure.add_trace(go.Choropleth(
             geojson=contours, featureidkey="properties.code",
             locations=list(noms), z=[0] * len(noms),
-            colorscale=[[0, "#e5e7eb"], [1, "#e5e7eb"]],
-            showscale=False, marker_line_color="white", marker_line_width=0.5,
+            colorscale=[[0, palette.GRIS_CLAIR], [1, palette.GRIS_CLAIR]],
+            showscale=False, marker_line_color=palette.BLANC, marker_line_width=0.5,
             text=list(noms.values()),
             hovertemplate="<b>%{text}</b><br>Aucune donnée affichée<extra></extra>",
             name="Communes", showlegend=False,
@@ -347,7 +352,7 @@ def creer_carte_communes(annee: int, code_departement: str,
                 geojson=contours, featureidkey="properties.code",
                 locations=groupe["code_commune"], z=[1] * len(groupe),
                 colorscale=[[0, couleurs[sport]], [1, couleurs[sport]]],
-                showscale=False, marker_line_color="white", marker_line_width=0.5,
+                showscale=False, marker_line_color=palette.BLANC, marker_line_width=0.5,
                 name=sport, showlegend=True,
                 customdata=groupe[["commune", "licences"]].to_numpy(),
                 hovertemplate=("<b>%{customdata[0]}</b><br>Sport dominant : "
@@ -357,10 +362,11 @@ def creer_carte_communes(annee: int, code_departement: str,
         figure.add_annotation(text="Aucun contour disponible pour ce département",
                               showarrow=False)
     figure.update_geos(fitbounds="locations" if noms else False,
-                       projection_type="mercator", visible=False)
+                       projection_type="mercator", visible=False,
+                       bgcolor=palette.FOND_CARTES_GEO)
     figure.update_layout(
         title=f"Sports dominants par commune — {code_departement} ({annee})",
-        height=650, margin={"l": 0, "r": 0, "t": 55, "b": 0},
+        height=650, paper_bgcolor=palette.FOND_CARTES_GEO, margin={"l": 0, "r": 0, "t": 55, "b": 0},
         legend_title_text="Sport dominant", clickmode="event",
         uirevision=f"communes-{code_departement}",
     )

@@ -2,6 +2,8 @@
 
 from dash import dcc, html
 
+from src.utils import couleurs
+
 # Chaque page du dashboard : (adresse, nom affiché). Ajouter une ligne pour une nouvelle page.
 PAGES = [
     ("/", "Accueil"),
@@ -12,7 +14,7 @@ PAGES = [
 
 STYLE_LIEN = {
     "padding": "12px 18px",
-    "color": "#002E85",
+    "color": couleurs.BLEU_MARINE,
     "textDecoration": "none",
     "fontWeight": "bold",
 }
@@ -25,8 +27,8 @@ def creer_navbar() -> html.Nav:
         style={
             "display": "flex",
             "flexWrap": "wrap",
-            "backgroundColor": "#eef2ff",
-            "borderBottom": "1px solid #c7d2fe",
+            "backgroundColor": couleurs.BLANC,
+            "borderBottom": f"3px solid {couleurs.BLEU_CLAIR}",
             "padding": "0 12px",
         },
     )

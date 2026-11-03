@@ -2,6 +2,7 @@
 
 import plotly.graph_objects as go
 
+from src.utils import couleurs
 from src.utils.indicateurs import pyramide_ages, TRANCHES_AGE
 
 
@@ -31,9 +32,9 @@ def creer_pyramide(
         donnees["tranche"],
     ))
     mises_en_avant = {etiquettes[t] for t in selection}
-    couleurs_hommes = ["#60a5fa" if not selection or t in mises_en_avant else "#dbeafe"
+    couleurs_hommes = [couleurs.CATEGORIE_1 if not selection or t in mises_en_avant else couleurs.GRIS_CLAIR
                        for t in donnees["tranche"]]
-    couleurs_femmes = ["#f472b6" if not selection or t in mises_en_avant else "#fce7f3"
+    couleurs_femmes = [couleurs.CATEGORIE_2 if not selection or t in mises_en_avant else couleurs.GRIS_CLAIR
                        for t in donnees["tranche"]]
     if sexe in ("tous", "h"):
         figure.add_trace(go.Bar(
@@ -74,10 +75,10 @@ def creer_pyramide(
         },
         yaxis={"title": None},
         legend={"orientation": "h", "y": 1.08, "x": 0.5, "xanchor": "center"},
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor=couleurs.BLANC,
+        paper_bgcolor=couleurs.BLANC,
         font={"size": 12},
     )
-    figure.update_xaxes(showgrid=True, gridcolor="#e5e7eb", zeroline=True, zerolinecolor="#9ca3af")
+    figure.update_xaxes(showgrid=True, gridcolor=couleurs.BORDURES, zeroline=True, zerolinecolor=couleurs.BLEU_MARINE)
 
     return figure

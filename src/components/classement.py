@@ -2,6 +2,7 @@
 
 import plotly.graph_objects as go
 
+from src.utils import couleurs
 from src.utils.indicateurs import (
     classement_region, classement_departement, classement_commune,
 )
@@ -38,7 +39,7 @@ def creer_classement(
             x=classement["licences"],
             y=classement["sport"],
             orientation="h",
-            marker_color="#6366f1",
+            marker_color=couleurs.UNE_COULEUR,
             text=classement["licences"],
             texttemplate="%{text:,.0f}",
             textposition="outside",
@@ -62,8 +63,8 @@ def creer_classement(
         xaxis_title="Nombre de licences",
         yaxis_title=None,
         showlegend=False,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor=couleurs.BLANC,
+        paper_bgcolor=couleurs.BLANC,
         font={"size": 12},
         bargap=0.3,
     )
@@ -75,7 +76,7 @@ def creer_classement(
 
     figure.update_xaxes(
         showgrid=True,
-        gridcolor="#e5e7eb",
+        gridcolor=couleurs.BORDURES,
         rangemode="tozero",
     )
 

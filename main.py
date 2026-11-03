@@ -6,7 +6,8 @@ import config
 from src.components.footer import creer_footer
 from src.components.header import creer_header
 from src.components.navbar import creer_navbar
-from src.pages import accueil, carte, tendances, profils
+from src.pages import accueil, carte, profils, tendances
+from src.utils import couleurs
 from src.utils.clean_data import clean_data
 from src.utils.get_data import get_data
 
@@ -39,8 +40,8 @@ def creer_application() -> Dash:
         # Fond blanc explicite : sinon le texte devient illisible dans un navigateur en mode sombre.
         style={
             "fontFamily": "Arial, sans-serif",
-            "backgroundColor": "white",
-            "color": "#111827",
+            "backgroundColor": couleurs.FOND_GENERAL,
+            "color": couleurs.BLEU_MARINE,
             "minHeight": "100vh",
         },
     )

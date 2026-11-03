@@ -2,6 +2,7 @@
 
 import plotly.graph_objects as go
 
+from src.utils import couleurs as palette
 from src.utils.indicateurs import licences_par_annee
 
 
@@ -23,7 +24,7 @@ def creer_evolution(
         figure.update_layout(height=450)
         return figure
 
-    couleurs = ["#6366f1" if annee == annee_choisie else "#c7d2fe" for annee in donnees["annee"]]
+    couleurs = [palette.MISE_EN_AVANT if annee == annee_choisie else palette.UNE_COULEUR for annee in donnees["annee"]]
 
     figure.add_trace(
         go.Bar(
@@ -40,12 +41,12 @@ def creer_evolution(
         xaxis_title="Année",
         yaxis_title="Nombre de licences",
         showlegend=False,
-        plot_bgcolor="white",
-        paper_bgcolor="white",
+        plot_bgcolor=palette.BLANC,
+        paper_bgcolor=palette.BLANC,
         font={"size": 12},
         bargap=0.25,
     )
     figure.update_xaxes(tickmode="linear", dtick=1)
-    figure.update_yaxes(showgrid=True, gridcolor="#e5e7eb", rangemode="tozero")
+    figure.update_yaxes(showgrid=True, gridcolor=palette.BORDURES, rangemode="tozero")
 
     return figure

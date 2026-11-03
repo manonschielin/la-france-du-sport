@@ -4,6 +4,7 @@ from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
 
 import config
+from src.utils import couleurs
 from src.components.carte import (
     creer_carte, creer_carte_departements, creer_carte_communes, creer_carte_taux,
     noms_regions, noms_departements, contours_communes_departement,
@@ -60,8 +61,8 @@ def creer_page() -> html.Div:
                     ),
                 ],
                 style={
-                    "backgroundColor": "#f3f4f6",
-                    "borderLeft": "4px solid #6366f1",
+                    "backgroundColor": couleurs.GRIS_CLAIR,
+                    "borderLeft": f"4px solid {couleurs.BLEU_CLAIR}",
                     "padding": "12px 16px",
                     "marginBottom": "25px",
                     "fontSize": "14px",
@@ -209,7 +210,7 @@ def creer_page() -> html.Div:
                             ),
                             html.P(
                                 id="note-evolution",
-                                style={"fontSize": "13px", "color": "#6b7280"},
+                                style={"fontSize": "13px", "color": couleurs.BLEU_MARINE},
                             ),
 
                             dcc.Loading(

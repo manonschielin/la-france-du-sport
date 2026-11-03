@@ -4,16 +4,16 @@ from dash import Dash, Input, Output, dcc, html
 import pandas as pd
 import plotly.graph_objects as go
 
+from src.utils import couleurs as palette
 from src.utils.indicateurs import LIBELLES_AGE
 from src.utils.profils import (
     SEUIL_EFFECTIF, licences_par_tranche_age, parts_femmes,
     repartition_ages,
 )
 
-BLEU = "#002E85"
-ROSE = "#cf5088"
-VERT = "#16805c"
-ROUGE = "#ba4545"
+COULEUR_HOMMES = palette.CATEGORIE_1   # sports majoritairement masculins
+COULEUR_FEMMES = palette.CATEGORIE_2   # sports majoritairement féminins
+COULEUR_MAXIMUM = palette.MISE_EN_AVANT  # tranche d'âge la plus nombreuse
 ANNEES = list(range(2012, 2024))
 
 
@@ -34,7 +34,7 @@ def graphique_parts_femmes(annee: int) -> go.Figure:
         return _vide("Aucun sport ne satisfait le seuil de licences renseignées.")
     fig = go.Figure(go.Bar(
         x=affiches["part_femmes"], y=affiches["sport"], orientation="h",
-        marker_color=[ROSE if value >= 50 else BLEU for value in affiches["part_femmes"]],
+        marker_color=[COULEUR_FEMMES if value >= 50 else COULEUR_HOMMES for value in affiches["part_femmes"]],
         customdata=affiches[["femmes", "hommes"]].to_numpy(),
         hovertemplate=("<b>%{y}</b><br>Femmes : %{x:.1f} %"
                        "<br>Licences féminines : %{customdata[0]:,.0f}"
@@ -43,9 +43,9 @@ def graphique_parts_femmes(annee: int) -> go.Figure:
     fig.update_layout(height=max(440, len(affiches) * 30 + 90),
                       margin={"l": 165, "r": 25, "t": 10, "b": 45},
                       xaxis_title="Part des femmes parmi les licences renseignées (%)",
-                      yaxis_title=None, plot_bgcolor="white", showlegend=False)
+                      yaxis_title=None, plot_bgcolor=palette.BLANC, showlegend=False)
     fig.update_xaxes(range=[0, 100], ticksuffix=" %")
-    fig.add_vline(x=50, line_dash="dash", line_color="#6b7280")
+    fig.add_vline(x=50, line_dash="dash", line_color=palette.BLEU_MARINE)
     return fig
 
 
@@ -63,7 +63,7 @@ def graphique_chaleur(annee: int) -> go.Figure:
     fig = go.Figure(go.Heatmap(
         z=matrice.to_numpy(), x=LIBELLES_AGE, y=matrice.index.tolist(),
         customdata=effectifs.to_numpy(),
-        colorscale="Blues", colorbar={"title": "%"},
+        colorscale=palette.ECHELLE_PLOTLY, colorbar={"title": "%"},
         hovertemplate=("<b>%{y}</b><br>%{x} : %{z:.1f} %"
                        "<br>%{customdata:,.0f} licences<extra></extra>"),
     ))
@@ -83,7 +83,7 @@ def graphique_tranches_age(annee: int) -> go.Figure:
     # Plus forte valeur en haut ; les étiquettes restent lisibles.
     donnees = donnees.sort_values("licences", ascending=True)
     maximum = donnees["licences"].max()
-    couleurs = [VERT if valeur == maximum else BLEU for valeur in donnees["licences"]]
+    couleurs = [COULEUR_MAXIMUM if valeur == maximum else palette.UNE_COULEUR for valeur in donnees["licences"]]
     fig = go.Figure(go.Bar(
         x=donnees["licences"], y=donnees["tranche"], orientation="h",
         marker_color=couleurs, text=donnees["licences"],
@@ -96,9 +96,9 @@ def graphique_tranches_age(annee: int) -> go.Figure:
     fig.update_layout(
         height=450, margin={"l": 110, "r": 110, "t": 15, "b": 55},
         xaxis_title="Nombre de licences (sexe et âge renseignés)",
-        yaxis_title=None, showlegend=False, plot_bgcolor="white",
+        yaxis_title=None, showlegend=False, plot_bgcolor=palette.BLANC,
     )
-    fig.update_xaxes(rangemode="tozero", showgrid=True, gridcolor="#e5e7eb")
+    fig.update_xaxes(rangemode="tozero", showgrid=True, gridcolor=palette.BORDURES)
     return fig
 
 
@@ -119,13 +119,13 @@ def creer_page() -> html.Div:
         html.P(f"Comparaison limitée aux sports ayant au moins {SEUIL_EFFECTIF:,} "
                "licences avec sexe et âge renseignés pour l'année choisie. "
                "Une part féminine de 50 % est indiquée par le trait pointillé."
-               .replace(",", " "), style={"color": "#555", "fontSize": "13px"}),
+               .replace(",", " "), style={"color": palette.BLEU_MARINE, "fontSize": "13px"}),
         html.H3("À quel âge pratique-t-on chaque sport ?"),
         dcc.Graph(id="profils-chaleur", figure=graphique_chaleur(2023)),
         html.P("Chaque case indique le pourcentage des licences renseignées de ce sport "
                "appartenant à la tranche d'âge, et non le nombre brut. "
                "Les quinze disciplines les plus représentées sont affichées.",
-               style={"color": "#555", "fontSize": "13px"}),
+               style={"color": palette.BLEU_MARINE, "fontSize": "13px"}),
         html.H3("Quelle tranche d'âge compte le plus de licences ?"),
         dcc.Graph(id="profils-tranches-age", figure=graphique_tranches_age(2023)),
         html.P("Classement national des licences dont l'âge et le sexe sont renseignés. "
@@ -133,7 +133,7 @@ def creer_page() -> html.Div:
                "et 75 ans et plus) : un effectif élevé ne signifie donc pas "
                "que les habitants de cette tranche pratiquent proportionnellement plus. "
                "Une licence ne correspond pas forcément à une personne unique.",
-               style={"color": "#555", "fontSize": "13px"}),
+               style={"color": palette.BLEU_MARINE, "fontSize": "13px"}),
     ], style={"maxWidth": "1250px", "margin": "auto", "lineHeight": "1.5"})
 
 

@@ -2,6 +2,8 @@
 
 from dash import html
 
+from src.utils import couleurs
+
 
 def creer_footer() -> html.Footer:
     """Sources des données et auteurs du projet."""
@@ -38,8 +40,8 @@ def creer_footer() -> html.Footer:
         style={
             "marginTop": "40px",
             "padding": "16px 30px",
-            "borderTop": "1px solid #e5e7eb",
-            "color": "#6b7280",
+            "borderTop": f"1px solid {couleurs.BORDURES}",
+            "color": couleurs.BLEU_MARINE,
             "fontSize": "13px",
         },
     )
