@@ -64,6 +64,10 @@ def creer_page() -> html.Div:
                         "pyramide des âges des licenciés.",
                     ]),
                     html.Li([
+                        dcc.Link("Découvrir les profils", href="/profils"),
+                        " : les sports les plus féminins ou masculins et les profils d’âge.",
+                    ]),
+                    html.Li([
                         dcc.Link("Découvrir les tendances", href="/tendances"),
                         " : évolutions nationales, baisse et reprise autour du Covid, "
                         "comparaison de plusieurs sports.",
