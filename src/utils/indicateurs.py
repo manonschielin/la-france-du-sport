@@ -365,16 +365,18 @@ def resume_departements() -> pd.DataFrame:
 
 @lru_cache(maxsize=50)
 def licences_commune(code_commune: str) -> pd.DataFrame:
-    """Licences d'une commune par année et par sport (rapide grâce à l'index des communes)."""
+    """Licences d'une commune par année et sport, arrondissements inclus."""
+    codes = codes_licences_commune(code_commune)
+    marqueurs = ", ".join("?" for _ in codes)
     with sqlite3.connect(config.DB_PATH) as connexion:
         donnees = pd.read_sql_query(
-            """SELECT l.annee, f.nom AS federation, SUM(l.total) AS licences
-               FROM cleaned_licences AS l INDEXED BY idx_commune
-               JOIN cleaned_federations AS f ON l.code_federation = f.code
-               WHERE l.code_commune = ? AND f.famille IN (?, ?)
-               GROUP BY l.annee, f.nom""",
+            f"""SELECT l.annee, f.nom AS federation, SUM(l.total) AS licences
+                FROM cleaned_licences AS l
+                JOIN cleaned_federations AS f ON l.code_federation = f.code
+                WHERE l.code_commune IN ({marqueurs}) AND f.famille IN (?, ?)
+                GROUP BY l.annee, f.nom""",
             connexion,
-            params=(code_commune, *FAMILLES_UNISPORT),
+            params=(*codes, *FAMILLES_UNISPORT),
         )
     donnees["sport"] = donnees["federation"].apply(nom_sport)
     return donnees
