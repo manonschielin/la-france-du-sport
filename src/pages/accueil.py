@@ -63,6 +63,11 @@ def creer_page() -> html.Div:
                         "l'évolution du nombre de licences, le classement des sports et la "
                         "pyramide des âges des licenciés.",
                     ]),
+                    html.Li([
+                        dcc.Link("Découvrir les tendances", href="/tendances"),
+                        " : évolutions nationales, baisse et reprise autour du Covid, "
+                        "comparaison de plusieurs sports.",
+                    ]),
                 ],
                 style={"lineHeight": "1.8"},
             ),

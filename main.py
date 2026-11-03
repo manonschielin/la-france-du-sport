@@ -6,7 +6,7 @@ import config
 from src.components.footer import creer_footer
 from src.components.header import creer_header
 from src.components.navbar import creer_navbar
-from src.pages import accueil, carte
+from src.pages import accueil, carte, tendances
 from src.utils.clean_data import clean_data
 from src.utils.get_data import get_data
 
@@ -14,6 +14,7 @@ from src.utils.get_data import get_data
 PAGES = {
     "/": accueil,
     "/carte": carte,
+    "/tendances": tendances,
 }
 
 

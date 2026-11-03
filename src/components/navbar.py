@@ -6,6 +6,7 @@ from dash import dcc, html
 PAGES = [
     ("/", "Accueil"),
     ("/carte", "Explorer la carte"),
+    ("/tendances", "Tendances"),
 ]
 
 STYLE_LIEN = {
