@@ -653,3 +653,23 @@ def pyramide_ages(
         "femmes": [int(sommes[f"f_{tranche}"]) for tranche in TRANCHES_AGE],
         "hommes": [int(sommes[f"h_{tranche}"]) for tranche in TRANCHES_AGE],
     })
+
+
+def chiffres_cles() -> dict[str, int | float | str]:
+    """Chiffres clés de la dernière année disponible, pour la page d'accueil."""
+    donnees = resume_departements()
+    par_annee = donnees.groupby("annee")["licences"].sum()
+    derniere_annee = int(par_annee.index.max())
+    annee = donnees.loc[donnees["annee"] == derniere_annee]
+
+    femmes = annee[[c for c in COLONNES_AGE if c.startswith("f_")]].sum().sum()
+    hommes = annee[[c for c in COLONNES_AGE if c.startswith("h_")]].sum().sum()
+
+    return {
+        "annee": derniere_annee,
+        "licences": int(par_annee[derniere_annee]),
+        "part_femmes": round(100 * femmes / (femmes + hommes), 1),
+        "sport_numero_un": str(annee.groupby("sport")["licences"].sum().idxmax()),
+        "nb_sports": int(annee["sport"].nunique()),
+        "annee_record": int(par_annee.idxmax()),
+    }
