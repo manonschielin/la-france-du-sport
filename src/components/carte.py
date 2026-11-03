@@ -46,7 +46,8 @@ def noms_regions() -> dict[str, str]:
 
 def creer_carte_taux(annee: int, sport: str, niveau: str,
                      code_region: str | None = None,
-                     code_departement: str | None = None) -> go.Figure:
+                     code_departement: str | None = None,
+                     sexe: str = "tous", tranches: list[str] | None = None) -> go.Figure:
     """Carte d'un sport en rouge selon son taux de licences / 1 000 habitants."""
     import pandas as pd
     from src.utils.indicateurs import licences_pour_1000
@@ -70,7 +71,7 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
     codes = [str(z["properties"]["code"]) for z in geojson["features"]]
     noms = [z["properties"].get("nom", code)
             for z, code in zip(geojson["features"], codes)]
-    donnees = licences_pour_1000(annee, sport, niveau)
+    donnees = licences_pour_1000(annee, sport, niveau, sexe, tranches)
     valeurs = donnees.set_index("code").reindex(codes)
     # Tracé gris couvrant TOUTES les zones (y compris sans licences).
     figure = go.Figure()
@@ -122,11 +123,12 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
 def creer_carte(
     annee: int,
     exclusions: list[str] | None = None,
+    sexe: str = "tous", tranches: list[str] | None = None,
 ) -> go.Figure:
     """Affiche les fédérations dominantes sur la carte."""
 
     contours = contours_regions()
-    donnees = sport_numero_un(annee, exclusions).copy()
+    donnees = sport_numero_un(annee, exclusions, sexe, tranches).copy()
 
     donnees = donnees.loc[
         ~donnees["code_region"].isin(CODES_OUTRE_MER)
@@ -220,6 +222,7 @@ def creer_carte_departements(
     annee: int,
     code_region: str,
     exclusions: list[str] | None = None,
+    sexe: str = "tous", tranches: list[str] | None = None,
 ) -> go.Figure:
     """Affiche le sport dominant de chaque département d'une région."""
 
@@ -229,7 +232,7 @@ def creer_carte_departements(
         for zone in contours["features"]
     }
 
-    donnees = sport_numero_un_departements(annee, list(noms), exclusions).copy()
+    donnees = sport_numero_un_departements(annee, list(noms), exclusions, sexe, tranches).copy()
     donnees["departement"] = donnees["code_departement"].map(noms)
 
     # Même couleur que sur la carte des régions pour un même sport.
@@ -317,12 +320,13 @@ def noms_departements(code_region: str) -> dict[str, str]:
 
 
 def creer_carte_communes(annee: int, code_departement: str,
-                         exclusions: list[str] | None = None) -> go.Figure:
+                         exclusions: list[str] | None = None,
+                         sexe: str = "tous", tranches: list[str] | None = None) -> go.Figure:
     """Affiche le sport dominant des communes d'un seul département."""
     contours = contours_communes_departement(code_departement)
     noms = {str(z["properties"]["code"]): z["properties"].get("nom", "")
             for z in contours["features"]}
-    donnees = sport_numero_un_communes(annee, list(noms), exclusions).copy()
+    donnees = sport_numero_un_communes(annee, list(noms), exclusions, sexe, tranches).copy()
     donnees["commune"] = donnees["code_commune"].map(noms)
     figure = go.Figure()
     # Tracé de fond : inclut aussi les communes sans licences et permet leurs clics.

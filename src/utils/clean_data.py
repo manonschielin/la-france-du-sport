@@ -139,11 +139,17 @@ def lire_noms_contours(niveau: str) -> pd.DataFrame:
 def creer_resume_departements(connexion: sqlite3.Connection) -> None:
     """Table résumée : licences par année, département et fédération (graphiques rapides)."""
     connexion.execute("DROP TABLE IF EXISTS cleaned_licences_departements")
+    colonnes = ", ".join(f"SUM({nom}) AS {nom}" for nom in COLONNES_AGE)
     connexion.execute(
-        """CREATE TABLE cleaned_licences_departements AS
-           SELECT annee, code_departement, code_federation, SUM(total) AS total
-           FROM cleaned_licences
-           GROUP BY annee, code_departement, code_federation"""
+        f"""CREATE TABLE cleaned_licences_departements AS
+            SELECT annee, code_departement, code_federation,
+                   SUM(total) AS total, {colonnes}
+            FROM cleaned_licences
+            GROUP BY annee, code_departement, code_federation"""
+    )
+    connexion.execute(
+        "CREATE INDEX IF NOT EXISTS idx_resume_annee_dep "
+        "ON cleaned_licences_departements (annee, code_departement, code_federation)"
     )
     connexion.commit()
 

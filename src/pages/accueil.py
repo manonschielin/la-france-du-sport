@@ -11,7 +11,7 @@ from src.components.carte import (
 from src.components.classement import creer_classement
 from src.components.evolution import creer_evolution
 from src.components.pyramide import creer_pyramide
-from src.utils.indicateurs import liste_sports_uniques
+from src.utils.indicateurs import liste_sports_uniques, TRANCHES_AGE, LIBELLES_AGE
 
 
 def creer_page() -> html.Div:
@@ -49,6 +49,9 @@ def creer_page() -> html.Div:
                                     "des âges des licenciés de la zone choisie."),
                             html.Li("Cliquez sur un département pour voir ses communes, puis sur une commune pour son classement."),
                             html.Li("Utilisez « Retour » pour remonter un niveau."),
+                            html.Li("Avec un filtre sexe ou âge, les licences sans sexe ou âge renseigné "
+                                    "ne sont pas comptées : les totaux peuvent être inférieurs aux totaux généraux. "
+                                    "Dans la pyramide, les tranches choisies sont mises en avant."),
                             html.Li("Le premier affichage d'une année ou des communes d'un département "
                                     "peut prendre jusqu'à une minute : les données se chargent puis "
                                     "restent en mémoire, les clics suivants sont rapides."),
@@ -100,6 +103,34 @@ def creer_page() -> html.Div:
                             ),
                         ],
                         style={"flex": 1, "minWidth": "230px"},
+                    ),
+
+                    html.Div(
+                        [
+                            html.Label("Sexe"),
+                            dcc.RadioItems(
+                                id="filtre-sexe",
+                                options=[{"label": "Tous", "value": "tous"},
+                                         {"label": "Femmes", "value": "f"},
+                                         {"label": "Hommes", "value": "h"}],
+                                value="tous", inline=True,
+                                labelStyle={"marginRight": "12px"},
+                            ),
+                        ],
+                        style={"minWidth": "200px"},
+                    ),
+                    html.Div(
+                        [
+                            html.Label("Tranches d'âge"),
+                            dcc.Dropdown(
+                                id="filtre-ages",
+                                options=[{"label": libelle, "value": code}
+                                         for code, libelle in zip(TRANCHES_AGE, LIBELLES_AGE)],
+                                value=[], multi=True, searchable=True,
+                                placeholder="Tous les âges",
+                            ),
+                        ],
+                        style={"flex": 1, "minWidth": "240px"},
                     ),
 
                     html.Div(
@@ -288,25 +319,28 @@ def enregistrer_callbacks(app: Dash) -> None:
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
         Input("sport-analyse", "value"),
+        Input("filtre-sexe", "value"),
+        Input("filtre-ages", "value"),
         Input("region-selectionnee", "data"),
         Input("departement-selectionne", "data"),
     )
     def actualiser_carte(annee: int, exclusions: list[str], sport: str,
+                         sexe: str, tranches: list[str],
                          code_region: str | None, code_departement: str | None):
         """Carte dominante par défaut, dégradé de rouge pour un sport choisi."""
         if sport:
             if code_departement:
                 return creer_carte_taux(annee, sport, "commune",
-                                       code_departement=code_departement)
+                                       code_departement=code_departement, sexe=sexe, tranches=tranches)
             if code_region:
                 return creer_carte_taux(annee, sport, "departement",
-                                       code_region=code_region)
-            return creer_carte_taux(annee, sport, "region")
+                                       code_region=code_region, sexe=sexe, tranches=tranches)
+            return creer_carte_taux(annee, sport, "region", sexe=sexe, tranches=tranches)
         if code_departement:
-            return creer_carte_communes(annee, code_departement, exclusions)
+            return creer_carte_communes(annee, code_departement, exclusions, sexe, tranches)
         if code_region:
-            return creer_carte_departements(annee, code_region, exclusions)
-        return creer_carte(annee, exclusions)
+            return creer_carte_departements(annee, code_region, exclusions, sexe, tranches)
+        return creer_carte(annee, exclusions, sexe, tranches)
 
     @app.callback(
         Output("region-selectionnee", "data"),
@@ -354,15 +388,17 @@ def enregistrer_callbacks(app: Dash) -> None:
         Input("commune-selectionnee", "data"),
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
+        Input("filtre-sexe", "value"),
+        Input("filtre-ages", "value"),
     )
     def actualiser_classement(region: str | None, departement: str | None,
                               commune: str | None, annee: int,
-                              exclusions: list[str]):
+                              exclusions: list[str], sexe: str, tranches: list[str]):
         """Classement de la commune, du département ou de la région sélectionnée."""
         if not region:
             return go.Figure(), "Cliquez sur une région pour afficher son classement."
         niveau, code, nom = zone_selectionnee(region, departement, commune)
-        figure = creer_classement(annee, code, exclusions, niveau=niveau)
+        figure = creer_classement(annee, code, exclusions, niveau=niveau, sexe=sexe, tranches=tranches)
         return figure, f"Top 10 — {nom} ({annee})"
 
     @app.callback(
@@ -375,13 +411,17 @@ def enregistrer_callbacks(app: Dash) -> None:
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
         Input("sport-analyse", "value"),
+        Input("filtre-sexe", "value"),
+        Input("filtre-ages", "value"),
     )
     def actualiser_evolution(region: str | None, departement: str | None,
                              commune: str | None, annee: int,
-                             exclusions: list[str], sport: str | None):
+                             exclusions: list[str], sport: str | None,
+                             sexe: str, tranches: list[str]):
         """Évolution des licences filtrée par sport et par territoire."""
         niveau, code, nom = zone_selectionnee(region, departement, commune)
-        figure = creer_evolution(niveau, code, exclusions, annee, sport=sport or None)
+        figure = creer_evolution(niveau, code, exclusions, annee, sport=sport or None,
+                                 sexe=sexe, tranches=tranches)
         titre = f"{nom} — {sport}" if sport else f"{nom} — Tous les sports"
         note = (
             "Une année sans barre signifie qu'aucune licence n'est renseignée "
@@ -401,12 +441,15 @@ def enregistrer_callbacks(app: Dash) -> None:
         Input("filtre-annee", "value"),
         Input("sports-exclus", "value"),
         Input("sport-analyse", "value"),
+        Input("filtre-sexe", "value"),
+        Input("filtre-ages", "value"),
     )
     def actualiser_pyramide(region: str | None, departement: str | None,
                             commune: str | None, annee: int,
-                            exclusions: list[str], sport: str | None):
+                            exclusions: list[str], sport: str | None,
+                            sexe: str, tranches: list[str]):
         """Pyramide des âges F/H de la zone, de l'année et du sport choisis."""
         niveau, code, nom = zone_selectionnee(region, departement, commune)
-        figure = creer_pyramide(annee, niveau, code, sport or None, exclusions)
+        figure = creer_pyramide(annee, niveau, code, sport or None, exclusions, sexe, tranches)
         titre = f"{nom} — {sport}" if sport else f"{nom} — Tous les sports"
         return figure, f"{titre} ({annee})"

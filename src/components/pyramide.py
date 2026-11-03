@@ -2,7 +2,7 @@
 
 import plotly.graph_objects as go
 
-from src.utils.indicateurs import pyramide_ages
+from src.utils.indicateurs import pyramide_ages, TRANCHES_AGE
 
 
 def creer_pyramide(
@@ -11,42 +11,53 @@ def creer_pyramide(
     code: str | None,
     sport: str | None,
     exclusions: list[str],
+    sexe: str = "tous", tranches: list[str] | None = None,
 ) -> go.Figure:
     """Pyramide des âges des licenciés : hommes à gauche, femmes à droite."""
-    donnees = pyramide_ages(annee, niveau, code, sport, exclusions)
+    donnees = pyramide_ages(annee, niveau, code, sport, exclusions, sexe, tranches)
 
     figure = go.Figure()
 
-    if donnees[["femmes", "hommes"]].to_numpy().sum() == 0:
+    colonnes_visibles = ["femmes"] if sexe == "f" else ["hommes"] if sexe == "h" else ["femmes", "hommes"]
+    if donnees[colonnes_visibles].to_numpy().sum() == 0:
         figure.add_annotation(text="Aucune donnée pour cette sélection", showarrow=False)
         figure.update_layout(height=450)
         return figure
 
     # Les hommes sont dessinés vers la gauche (valeurs négatives), mais affichés en positif.
-    figure.add_trace(
-        go.Bar(
+    selection = set(tranches or [])
+    etiquettes = dict(zip(
+        TRANCHES_AGE,
+        donnees["tranche"],
+    ))
+    mises_en_avant = {etiquettes[t] for t in selection}
+    couleurs_hommes = ["#60a5fa" if not selection or t in mises_en_avant else "#dbeafe"
+                       for t in donnees["tranche"]]
+    couleurs_femmes = ["#f472b6" if not selection or t in mises_en_avant else "#fce7f3"
+                       for t in donnees["tranche"]]
+    if sexe in ("tous", "h"):
+        figure.add_trace(go.Bar(
             y=donnees["tranche"],
             x=-donnees["hommes"],
             customdata=donnees["hommes"],
             name="Hommes",
             orientation="h",
-            marker_color="#60a5fa",
+            marker_color=couleurs_hommes,
             hovertemplate="<b>%{y}</b><br>Hommes : %{customdata:,.0f}<extra></extra>",
-        )
-    )
-    figure.add_trace(
-        go.Bar(
+        ))
+    if sexe in ("tous", "f"):
+        figure.add_trace(go.Bar(
             y=donnees["tranche"],
             x=donnees["femmes"],
             name="Femmes",
             orientation="h",
-            marker_color="#f472b6",
+            marker_color=couleurs_femmes,
             hovertemplate="<b>%{y}</b><br>Femmes : %{x:,.0f}<extra></extra>",
-        )
-    )
+        ))
 
     # Graduations symétriques, affichées sans le signe moins.
-    maximum = int(max(donnees["hommes"].max(), donnees["femmes"].max()))
+    maximum = int(max(donnees["hommes"].max() if sexe != "f" else 0,
+                      donnees["femmes"].max() if sexe != "h" else 0))
     moitie = maximum // 2
     graduations = [-maximum, -moitie, 0, moitie, maximum]
 

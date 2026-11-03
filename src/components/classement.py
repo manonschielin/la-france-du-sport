@@ -12,13 +12,14 @@ def creer_classement(
     code_region: str,
     exclusions: list[str],
     niveau: str = "region",
+    sexe: str = "tous", tranches: list[str] | None = None,
 ) -> go.Figure:
     """Crée le graphique des dix premières fédérations."""
 
     calculs = {"region": classement_region,
                "departement": classement_departement,
                "commune": classement_commune}
-    classement = calculs[niveau](annee, code_region, exclusions)
+    classement = calculs[niveau](annee, code_region, exclusions, sexe, tranches)
 
     figure = go.Figure()
 
