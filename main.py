@@ -3,6 +3,9 @@
 from dash import Dash, Input, Output, dcc, html
 
 import config
+from src.components.filtres import (
+    FILTRES_PAR_PAGE, LARGEURS, STYLE_FILTRES, TOUS_LES_FILTRES, creer_filtres,
+)
 from src.components.footer import creer_footer
 from src.components.header import creer_header
 from src.components.navbar import creer_navbar
@@ -29,8 +32,11 @@ def creer_application() -> Dash:
     app.layout = html.Div(
         [
             dcc.Location(id="url"),
-            creer_header(),
-            creer_navbar(),
+            # En-tête, navigation et filtres restent visibles quand on descend dans la page.
+            html.Div(
+                [creer_header(), creer_navbar(), creer_filtres()],
+                style={"position": "sticky", "top": "0", "zIndex": 1000},
+            ),
             html.Main(
                 id="contenu-page",
                 style={"maxWidth": "1600px", "margin": "auto", "padding": "20px 30px"},
@@ -51,6 +57,17 @@ def creer_application() -> Dash:
         """Affiche la page qui correspond à l'adresse (l'accueil si elle est inconnue)."""
         page = PAGES.get(adresse or "/", accueil)
         return page.creer_page()
+
+    @app.callback(
+        [Output("zone-filtres", "style")] + [Output(bloc, "style") for bloc in TOUS_LES_FILTRES],
+        Input("url", "pathname"),
+    )
+    def afficher_filtres(adresse: str | None) -> list[dict]:
+        """N'affiche que les filtres qui agissent sur la page ouverte (aucun s'il n'y en a pas)."""
+        utiles = FILTRES_PAR_PAGE.get(adresse or "/", [])
+        zone = STYLE_FILTRES if utiles else {**STYLE_FILTRES, "display": "none"}
+        blocs = [LARGEURS[bloc] if bloc in utiles else {"display": "none"} for bloc in TOUS_LES_FILTRES]
+        return [zone, *blocs]
 
     for page in PAGES.values():
         page.enregistrer_callbacks(app)

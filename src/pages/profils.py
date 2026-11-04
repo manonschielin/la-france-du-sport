@@ -14,7 +14,6 @@ from src.utils.profils import (
 COULEUR_HOMMES = palette.CATEGORIE_1   # sports majoritairement masculins
 COULEUR_FEMMES = palette.CATEGORIE_2   # sports majoritairement féminins
 COULEUR_MAXIMUM = palette.MISE_EN_AVANT  # tranche d'âge la plus nombreuse
-ANNEES = list(range(2012, 2024))
 
 
 def _vide(message: str) -> go.Figure:
@@ -104,16 +103,10 @@ def graphique_tranches_age(annee: int) -> go.Figure:
 
 def creer_page() -> html.Div:
     """Construit la page Profils et ses trois graphiques."""
-    options_annees = [{"label": str(annee), "value": annee} for annee in ANNEES]
     return html.Div([
         html.H2("Qui fait du sport ?"),
         html.P("Les licences des fédérations unisports, analysées selon le sexe et l'âge, "
-               "pour la France entière."),
-        html.Div([
-            html.Label("Année d'analyse"),
-            dcc.Dropdown(id="profils-annee", options=options_annees, value=2023,
-                         clearable=False),
-        ], style={"maxWidth": "220px", "marginBottom": "22px"}),
+               "pour la France entière. Choisissez l'année avec le filtre en haut de l'écran."),
         html.H3("Les sports les plus féminins et les plus masculins"),
         dcc.Graph(id="profils-parts", figure=graphique_parts_femmes(2023)),
         html.P(f"Comparaison limitée aux sports ayant au moins {SEUIL_EFFECTIF:,} "
@@ -139,14 +132,14 @@ def creer_page() -> html.Div:
 
 def enregistrer_callbacks(app: Dash) -> None:
     """Branche les filtres aux graphiques de la page Profils."""
-    @app.callback(Output("profils-parts", "figure"), Input("profils-annee", "value"))
+    @app.callback(Output("profils-parts", "figure"), Input("filtre-annee", "value"))
     def actualiser_parts(annee: int) -> go.Figure:
         return graphique_parts_femmes(annee)
 
-    @app.callback(Output("profils-chaleur", "figure"), Input("profils-annee", "value"))
+    @app.callback(Output("profils-chaleur", "figure"), Input("filtre-annee", "value"))
     def actualiser_chaleur(annee: int) -> go.Figure:
         return graphique_chaleur(annee)
 
-    @app.callback(Output("profils-tranches-age", "figure"), Input("profils-annee", "value"))
+    @app.callback(Output("profils-tranches-age", "figure"), Input("filtre-annee", "value"))
     def actualiser_tranches_age(annee: int) -> go.Figure:
         return graphique_tranches_age(annee)

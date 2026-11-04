@@ -3,7 +3,6 @@
 from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
 
-import config
 from src.utils import couleurs
 from src.components.carte import (
     creer_carte, creer_carte_departements, creer_carte_communes, creer_carte_taux,
@@ -12,21 +11,10 @@ from src.components.carte import (
 from src.components.classement import creer_classement
 from src.components.evolution import creer_evolution
 from src.components.pyramide import creer_pyramide
-from src.utils.indicateurs import liste_sports_uniques, TRANCHES_AGE, LIBELLES_AGE
 
 
 def creer_page() -> html.Div:
-    """Construit la mise en page (filtres, carte, classement)."""
-    annees = sorted(config.LICENCES)
-    sports = liste_sports_uniques()
-
-    options_sports = [
-        {
-            "label": sport,
-            "value": sport,
-        }
-        for sport in sports["sport"]
-    ]
+    """Construit la mise en page (carte, classement)."""
 
     return html.Div(
         [
@@ -43,7 +31,7 @@ def creer_page() -> html.Div:
                     html.Ol(
                         [
                             html.Li("Choisissez une année et, si vous le souhaitez, des sports à exclure "
-                                    "(par exemple le football, présent partout)."),
+                                    "avec les filtres en haut de l'écran (par exemple le football, présent partout)."),
                             html.Li("Cliquez sur une région : la carte affiche le sport dominant de chacun "
                                     "de ses départements. À droite, l'évolution du nombre de licences ; "
                                     "en dessous, le classement des 10 premiers sports et la pyramide "
@@ -69,98 +57,6 @@ def creer_page() -> html.Div:
                 },
             ),
 
-            # Filtres
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Label("Année"),
-                            dcc.Dropdown(
-                                id="filtre-annee",
-                                options=[
-                                    {"label": str(a), "value": a}
-                                    for a in annees
-                                ],
-                                value=annees[-1],
-                                clearable=False,
-                            ),
-                        ],
-                        style={
-                            "width": "180px",
-                            "flexShrink": 0,
-                        },
-                    ),
-
-                    html.Div(
-                        [
-                            html.Label("Sport à analyser"),
-                            dcc.Dropdown(
-                                id="sport-analyse",
-                                options=[{"label": "Tous les sports", "value": ""}]
-                                        + options_sports,
-                                value="",
-                                searchable=True,
-                                clearable=False,
-                            ),
-                        ],
-                        style={"flex": 1, "minWidth": "230px"},
-                    ),
-
-                    html.Div(
-                        [
-                            html.Label("Sexe"),
-                            dcc.RadioItems(
-                                id="filtre-sexe",
-                                options=[{"label": "Tous", "value": "tous"},
-                                         {"label": "Femmes", "value": "f"},
-                                         {"label": "Hommes", "value": "h"}],
-                                value="tous", inline=True,
-                                labelStyle={"marginRight": "12px"},
-                            ),
-                        ],
-                        style={"minWidth": "200px"},
-                    ),
-                    html.Div(
-                        [
-                            html.Label("Tranches d'âge"),
-                            dcc.Dropdown(
-                                id="filtre-ages",
-                                options=[{"label": libelle, "value": code}
-                                         for code, libelle in zip(TRANCHES_AGE, LIBELLES_AGE)],
-                                value=[], multi=True, searchable=True,
-                                placeholder="Tous les âges",
-                            ),
-                        ],
-                        style={"flex": 1, "minWidth": "240px"},
-                    ),
-
-                    html.Div(
-                        [
-                            html.Label("Sports à exclure"),
-                            dcc.Dropdown(
-                                id="sports-exclus",
-                                options=options_sports,
-                                value=[],
-                                multi=True,
-                                searchable=True,
-                                clearable=True,
-                                placeholder="Rechercher des sports...",
-                            ),
-                        ],
-                        style={
-                            "flex": 1,
-                            "minWidth": "250px",
-                        },
-                    ),
-                ],
-                style={
-                    "display": "flex",
-                    "gap": "25px",
-                    "alignItems": "flex-end",
-                    "marginBottom": "30px",
-                    "flexWrap": "wrap",
-                },
-            ),
 
             # Région sélectionnée, conservée entre les filtres
             dcc.Store(
