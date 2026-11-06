@@ -13,7 +13,7 @@ from src.components.filtres import (
 from src.components.footer import creer_footer
 from src.components.header import creer_header
 from src.components.navbar import creer_navbar
-from src.pages import accueil, carte, profils, tendances
+from src.pages import accueil, carte, fetiches, profils, tendances
 from src.utils import couleurs
 from src.utils.clean_data import clean_data
 from src.utils.get_data import get_data
@@ -24,6 +24,7 @@ PAGES = {
     "/carte": carte,
     "/tendances": tendances,
     "/profils": profils,
+    "/fetiches": fetiches,
 }
 
 

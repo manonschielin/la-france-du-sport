@@ -70,6 +70,10 @@ def creer_page() -> html.Div:
                         " : les sports les plus féminins ou masculins et les profils d’âge.",
                     ]),
                     html.Li([
+                        dcc.Link("Explorer la répartition des licences", href="/fetiches"),
+                        " : la distribution des communes selon leurs licences pour 1 000 habitants.",
+                    ]),
+                    html.Li([
                         dcc.Link("Découvrir les tendances", href="/tendances"),
                         (" : évolutions nationales, baisse et reprise autour du Covid, "
                          "comparaison de plusieurs sports."),
