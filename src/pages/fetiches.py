@@ -1,8 +1,8 @@
 """Distribution des taux de licences sportives par commune (histogramme national)."""
 
-from dash import Dash, Input, Output, dcc, html
 import plotly.express as px
 import plotly.graph_objects as go
+from dash import Dash, Input, Output, dcc, html
 
 import config
 from src.utils import couleurs

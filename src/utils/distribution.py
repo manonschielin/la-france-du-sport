@@ -10,7 +10,12 @@ from functools import lru_cache
 import pandas as pd
 
 import config
-from src.utils.indicateurs import FAMILLES_UNISPORT, code_ville, codes_federations, populations
+from src.utils.indicateurs import (
+    FAMILLES_UNISPORT,
+    code_ville,
+    codes_federations,
+    populations,
+)
 
 
 @lru_cache(maxsize=20)
@@ -36,7 +41,7 @@ def _regrouper_arrondissements(donnees: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=["code", "licences"])
     donnees["code"] = donnees["code"].astype(str).map(code_ville)
     donnees["licences"] = pd.to_numeric(donnees["licences"], errors="coerce")
-    return donnees.groupby("code", as_index=False)["licences"].sum(min_count=1)
+    return donnees.groupby("code", as_index=False)[["licences"]].sum(min_count=1)
 
 
 def distribution_communes(

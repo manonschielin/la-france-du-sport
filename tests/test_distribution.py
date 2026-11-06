@@ -75,7 +75,7 @@ def test_histogramme_plotly_express(petite_base):
     pytest.importorskip("dash")
     from src.pages.fetiches import creer_histogramme
 
-    fig, message = creer_histogramme(2023, "Football", True)
+    fig, message = creer_histogramme(2023, "Football", True, "complet")
     assert len(fig.data) == 1
     assert fig.data[0].type == "histogram"
     assert len(fig.data[0].x) == 2
