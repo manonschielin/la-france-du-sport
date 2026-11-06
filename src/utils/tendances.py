@@ -14,7 +14,7 @@ SEUIL_LICENCES = 10_000
 def licences_nationales() -> pd.DataFrame:
     """Une ligne par année et sport, en conservant les années réellement observées."""
     donnees = resume_departements()
-    resultat = (donnees.groupby(["annee", "sport"], as_index=False)["licences"]
+    resultat = (donnees.groupby(["annee", "sport"], as_index=False)[["licences"]]
                 .sum())
     resultat["annee"] = pd.to_numeric(resultat["annee"], errors="raise").astype(int)
     resultat["licences"] = pd.to_numeric(resultat["licences"], errors="raise")
@@ -41,11 +41,11 @@ def effet_covid(seuil: int = SEUIL_LICENCES, nombre: int = 12) -> pd.DataFrame:
     source = licences_nationales()
     donnees = source.loc[source["annee"].isin((2019, 2021, 2023))]
     large = donnees.pivot(index="sport", columns="annee", values="licences")
-    if not set((2019, 2021, 2023)).issubset(large.columns):
+    if not {2019, 2021, 2023}.issubset(large.columns):
         return pd.DataFrame(columns=["sport", "variation_2019_2021", "variation_2021_2023"])
     large = large.dropna(subset=[2019, 2021, 2023])
     large = large.loc[(large[2019] >= seuil) & (large[2021] > 0)]
-    large = large.sort_values(2019, ascending=False).head(nombre).copy()
+    large = large.loc[large[2019].nlargest(nombre).index].copy()
     large["variation_2019_2021"] = 100 * (large[2021] / large[2019] - 1)
     large["variation_2021_2023"] = 100 * (large[2023] / large[2021] - 1)
     return large.reset_index()[["sport", "variation_2019_2021", "variation_2021_2023"]]

@@ -26,7 +26,7 @@ FILTRES_PAR_PAGE = {
 TOUS_LES_FILTRES = ["bloc-annee", "bloc-sport", "bloc-sexe", "bloc-ages", "bloc-exclus"]
 
 # Largeur de chaque bloc de filtre (réutilisée par le callback qui affiche ou cache les blocs).
-LARGEURS = {
+LARGEURS: dict[str, dict] = {
     "bloc-annee": {"width": "130px", "flexShrink": 0},
     "bloc-sport": {"flex": 1, "minWidth": "200px"},
     "bloc-sexe": {"minWidth": "190px"},

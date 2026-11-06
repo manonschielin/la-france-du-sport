@@ -4,7 +4,12 @@ from functools import lru_cache
 
 import pandas as pd
 
-from src.utils.indicateurs import COLONNES_AGE, LIBELLES_AGE, TRANCHES_AGE, resume_departements
+from src.utils.indicateurs import (
+    COLONNES_AGE,
+    LIBELLES_AGE,
+    TRANCHES_AGE,
+    resume_departements,
+)
 
 SEUIL_EFFECTIF = 10_000
 NB_SPORTS_CHALEUR = 15

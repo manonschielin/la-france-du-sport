@@ -161,8 +161,8 @@ def clean_data() -> None:
     for numero, annee in enumerate(sorted(config.LICENCES)):
         print(f"Nettoyage des licences {annee}")
         licences = nettoyer_licences(connexion, annee)
-        mode = "replace" if numero == 0 else "append"
-        licences.to_sql("cleaned_licences", connexion, if_exists=mode, index=False)
+        licences.to_sql("cleaned_licences", connexion,
+                        if_exists="replace" if numero == 0 else "append", index=False)
 
     creer_resume_departements(connexion)
     nettoyer_federations(connexion).to_sql("cleaned_federations", connexion, if_exists="replace", index=False)

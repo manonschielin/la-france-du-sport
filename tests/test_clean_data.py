@@ -3,7 +3,9 @@
 # Pour exécuter : uv run python -m tests.test_clean_data
 
 import sqlite3
+
 import pandas as pd
+
 import config
 
 

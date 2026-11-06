@@ -4,7 +4,9 @@ import plotly.graph_objects as go
 
 from src.utils import couleurs
 from src.utils.indicateurs import (
-    classement_region, classement_departement, classement_commune,
+    classement_commune,
+    classement_departement,
+    classement_region,
 )
 
 

@@ -8,12 +8,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 import config
-from src.utils.indicateurs import (
-    sport_numero_un, sport_numero_un_departements, sport_numero_un_communes,
-)
 from src.utils import couleurs as palette
+from src.utils.indicateurs import (
+    sport_numero_un,
+    sport_numero_un_communes,
+    sport_numero_un_departements,
+)
 from src.utils.referentiel import couleur_sport
-
 
 CODES_OUTRE_MER = {"01", "02", "03", "04", "06"}
 
@@ -50,7 +51,6 @@ def creer_carte_taux(annee: int, sport: str, niveau: str,
                      code_departement: str | None = None,
                      sexe: str = "tous", tranches: list[str] | None = None) -> go.Figure:
     """Carte d'un sport en rouge selon son taux de licences / 1 000 habitants."""
-    import pandas as pd
     from src.utils.indicateurs import licences_pour_1000
 
     if niveau == "region":
@@ -356,7 +356,7 @@ def creer_carte_communes(annee: int, code_departement: str,
                 name=sport, showlegend=True,
                 customdata=groupe[["commune", "licences"]].to_numpy(),
                 hovertemplate=("<b>%{customdata[0]}</b><br>Sport dominant : "
-                               + sport + "<br>Licences : %{customdata[1]:,.0f}<extra></extra>"),
+                               + str(sport) + "<br>Licences : %{customdata[1]:,.0f}<extra></extra>"),
             ))
     if not noms:
         figure.add_annotation(text="Aucun contour disponible pour ce département",

@@ -1,13 +1,15 @@
 """Page nationale : répartition des licences sportives par sexe et âge."""
 
-from dash import Dash, Input, Output, dcc, html
 import pandas as pd
 import plotly.graph_objects as go
+from dash import Dash, Input, Output, dcc, html
 
 from src.utils import couleurs as palette
 from src.utils.indicateurs import LIBELLES_AGE
 from src.utils.profils import (
-    SEUIL_EFFECTIF, licences_par_tranche_age, parts_femmes,
+    SEUIL_EFFECTIF,
+    licences_par_tranche_age,
+    parts_femmes,
     repartition_ages,
 )
 

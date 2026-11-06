@@ -30,7 +30,7 @@ def creer_chiffre(valeur: str, legende: str) -> html.Div:
 def creer_page() -> html.Div:
     """Présentation du dashboard, chiffres clés et liens vers les pages."""
     chiffres = chiffres_cles()
-    licences = f"{chiffres['licences'] / 1_000_000:.1f} M".replace(".", ",")
+    licences = f"{int(chiffres['licences']) / 1_000_000:.1f} M".replace(".", ",")
     part_femmes = f"{chiffres['part_femmes']} %".replace(".", ",")
 
     return html.Div(
@@ -61,9 +61,9 @@ def creer_page() -> html.Div:
                 [
                     html.Li([
                         dcc.Link("Explorer la carte", href="/carte"),
-                        " : le sport dominant de chaque région, département et commune, "
-                        "l'évolution du nombre de licences, le classement des sports et la "
-                        "pyramide des âges des licenciés.",
+                        (" : le sport dominant de chaque région, département et commune, "
+                         "l'évolution du nombre de licences, le classement des sports et la "
+                         "pyramide des âges des licenciés."),
                     ]),
                     html.Li([
                         dcc.Link("Découvrir les profils", href="/profils"),
@@ -71,8 +71,8 @@ def creer_page() -> html.Div:
                     ]),
                     html.Li([
                         dcc.Link("Découvrir les tendances", href="/tendances"),
-                        " : évolutions nationales, baisse et reprise autour du Covid, "
-                        "comparaison de plusieurs sports.",
+                        (" : évolutions nationales, baisse et reprise autour du Covid, "
+                         "comparaison de plusieurs sports."),
                     ]),
                 ],
                 style={"lineHeight": "1.8"},

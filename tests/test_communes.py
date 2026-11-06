@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 
 import config
-from src.utils import indicateurs
 from src.components import carte
+from src.utils import indicateurs
 
 
 @pytest.fixture

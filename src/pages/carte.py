@@ -1,16 +1,21 @@
 """Page « Explorer la carte » : carte des sports, évolution, classement et pyramide des âges."""
 
-from dash import Dash, Input, Output, State, ctx, dcc, html
 import plotly.graph_objects as go
+from dash import Dash, Input, Output, State, ctx, dcc, html
 
-from src.utils import couleurs
 from src.components.carte import (
-    creer_carte, creer_carte_departements, creer_carte_communes, creer_carte_taux,
-    noms_regions, noms_departements, contours_communes_departement,
+    contours_communes_departement,
+    creer_carte,
+    creer_carte_communes,
+    creer_carte_departements,
+    creer_carte_taux,
+    noms_departements,
+    noms_regions,
 )
 from src.components.classement import creer_classement
 from src.components.evolution import creer_evolution
 from src.components.pyramide import creer_pyramide
+from src.utils import couleurs
 
 
 def creer_page() -> html.Div:
@@ -200,12 +205,12 @@ def enregistrer_callbacks(app: Dash) -> None:
                           commune: str | None) -> tuple[str, str | None, str]:
         """Niveau, code et nom de la zone la plus précise sélectionnée."""
         if commune:
-            zones = contours_communes_departement(departement)
+            zones = contours_communes_departement(str(departement))
             noms = {str(z["properties"]["code"]): z["properties"].get("nom", commune)
                     for z in zones["features"]}
             return "commune", commune, noms.get(commune, commune)
         if departement:
-            return "departement", departement, noms_departements(region).get(departement, departement)
+            return "departement", departement, noms_departements(str(region)).get(departement, departement)
         if region:
             return "region", region, regions.get(region, region)
         return "france", None, "France entière"
@@ -295,7 +300,7 @@ def enregistrer_callbacks(app: Dash) -> None:
         if not region:
             return go.Figure(), "Cliquez sur une région pour afficher son classement."
         niveau, code, nom = zone_selectionnee(region, departement, commune)
-        figure = creer_classement(annee, code, exclusions, niveau=niveau, sexe=sexe, tranches=tranches)
+        figure = creer_classement(annee, str(code), exclusions, niveau=niveau, sexe=sexe, tranches=tranches)
         return figure, f"Top 10 — {nom} ({annee})"
 
     @app.callback(

@@ -158,7 +158,7 @@ def _agregation_sql(annee: int, niveau: str, sexe: str = "tous",
 def _regrouper_sports(donnees: pd.DataFrame, colonne_zone: str) -> pd.DataFrame:
     """Additionne les fédérations partageant un nom de sport sans falsifier leurs codes."""
     return (
-        donnees.groupby([colonne_zone, "sport"], as_index=False)["licences"]
+        donnees.groupby([colonne_zone, "sport"], as_index=False)[["licences"]]
         .sum()
     )
 
@@ -409,7 +409,7 @@ def licences_par_annee(
 ) -> pd.DataFrame:
     """Licences par année et par territoire, éventuellement limitées à un sport."""
     if niveau == "commune":
-        donnees = (licences_commune_filtrees(code, sexe, tranches)
+        donnees = (licences_commune_filtrees(str(code), sexe, tranches)
                    if filtre_actif(sexe, tranches) else licences_commune(code))
     else:
         donnees = resume_departements()
@@ -427,7 +427,7 @@ def licences_par_annee(
     if niveau != "commune" and filtre_actif(sexe, tranches):
         donnees = donnees.copy()
         donnees["licences"] = compter_lignes(donnees, sexe, tranches)
-    resultat = donnees.groupby("annee", as_index=False)["licences"].sum()
+    resultat = donnees.groupby("annee", as_index=False)[["licences"]].sum()
     if filtre_actif(sexe, tranches):
         resultat = resultat.loc[resultat["licences"] > 0]
     return resultat
@@ -475,7 +475,7 @@ def populations(niveau: str) -> pd.DataFrame:
                 & (donnees["code_origine"] != donnees["code"])
             )
         ]
-    return donnees.groupby("code", as_index=False)["population"].sum(min_count=1)
+    return donnees.groupby("code", as_index=False)[["population"]].sum(min_count=1)
 
 
 def codes_federations(sport: str) -> list[str]:
@@ -501,7 +501,7 @@ def licences_sport_communes(annee: int, sport: str) -> pd.DataFrame:
             params=(annee, *codes),
         )
     donnees["code"] = donnees["code"].apply(code_ville)
-    return donnees.groupby("code", as_index=False)["licences"].sum()
+    return donnees.groupby("code", as_index=False)[["licences"]].sum()
 
 
 def licences_sport_communes_filtrees(
@@ -521,7 +521,7 @@ def licences_sport_communes_filtrees(
             connexion, params=(annee, *codes),
         )
     donnees["code"] = donnees["code"].map(code_ville)
-    return donnees.groupby("code", as_index=False)["licences"].sum()
+    return donnees.groupby("code", as_index=False)[["licences"]].sum()
 
 
 def licences_pour_1000(annee: int, sport: str, niveau: str,
@@ -542,7 +542,7 @@ def licences_pour_1000(annee: int, sport: str, niveau: str,
         if filtre_actif(sexe, tranches):
             resume["licences"] = compter_lignes(resume, sexe, tranches)
         colonne = "code_region" if niveau == "region" else "code_departement"
-        licences = (resume.groupby(colonne, as_index=False)["licences"].sum()
+        licences = (resume.groupby(colonne, as_index=False)[["licences"]].sum()
                     .rename(columns={colonne: "code"}))
 
     licences = licences.copy()
@@ -671,5 +671,5 @@ def chiffres_cles() -> dict[str, int | float | str]:
         "part_femmes": round(100 * femmes / (femmes + hommes), 1),
         "sport_numero_un": str(annee.groupby("sport")["licences"].sum().idxmax()),
         "nb_sports": int(annee["sport"].nunique()),
-        "annee_record": int(par_annee.idxmax()),
+        "annee_record": int(str(par_annee.idxmax())),
     }

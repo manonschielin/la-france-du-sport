@@ -4,7 +4,11 @@ from dash import Dash, Input, Output, dcc, html
 
 import config
 from src.components.filtres import (
-    FILTRES_PAR_PAGE, LARGEURS, STYLE_FILTRES, TOUS_LES_FILTRES, creer_filtres,
+    FILTRES_PAR_PAGE,
+    LARGEURS,
+    STYLE_FILTRES,
+    TOUS_LES_FILTRES,
+    creer_filtres,
 )
 from src.components.footer import creer_footer
 from src.components.header import creer_header

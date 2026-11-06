@@ -7,10 +7,7 @@ import sqlite3
 import urllib.request
 from pathlib import Path
 
-
 import config
-
-
 
 
 def telecharger(url: str, chemin: Path) -> None:

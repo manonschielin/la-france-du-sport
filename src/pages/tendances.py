@@ -1,13 +1,18 @@
 """Page Tendances : analyses nationales de l'évolution des licences sportives."""
 
-from dash import Dash, Input, Output, dcc, html
 import pandas as pd
 import plotly.graph_objects as go
+from dash import Dash, Input, Output, dcc, html
 
 from src.utils import couleurs
 from src.utils.tendances import (
-    ANNEES, SEUIL_LICENCES, effet_covid, evolution_sports,
-    sports_comparables, sports_par_defaut, variations,
+    ANNEES,
+    SEUIL_LICENCES,
+    effet_covid,
+    evolution_sports,
+    sports_comparables,
+    sports_par_defaut,
+    variations,
 )
 
 BLEU = couleurs.BLEU_MARINE

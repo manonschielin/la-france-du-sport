@@ -2,7 +2,9 @@
 #pour compiler, éxecuter cette commande : uv run python -m tests.test_get_data
 
 import sqlite3
+
 import pandas as pd
+
 import config
 
 

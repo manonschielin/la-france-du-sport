@@ -3,7 +3,6 @@
 
 from pathlib import Path
 
-
 ROOT_DIR = Path(__file__).resolve().parent
 DATA_RAW_DIR = ROOT_DIR / "data" / "raw"
 DB_PATH = ROOT_DIR / "data" / "cleaned" / "sport.db"

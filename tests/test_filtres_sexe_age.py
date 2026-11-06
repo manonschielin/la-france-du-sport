@@ -106,5 +106,5 @@ def test_pyramide_masque_sexe_et_surligne_ages(donnees):
     fig = creer_pyramide(2023, "region", "84", None, [], "f", ["0_4"])
     assert len(fig.data) == 1
     assert fig.data[0].name == "Femmes"
-    assert list(fig.data[0].marker.color)[0] != list(fig.data[0].marker.color)[1]
-    assert list(fig.data[0].x)[0] == 12
+    assert fig.data[0].marker.color[0] != fig.data[0].marker.color[1]
+    assert fig.data[0].x[0] == 12

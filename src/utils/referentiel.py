@@ -8,7 +8,6 @@ import unicodedata
 
 from src.utils.couleurs import CATEGORIE_1
 
-
 NOMS_COURTS = {
     "football": "Football",
     "tennis": "Tennis",
@@ -80,8 +79,4 @@ def couleur_sport(code_federation: str) -> str:
     teinte = int.from_bytes(empreinte[:4], "big") / (2**32)
     rouge, vert, bleu = colorsys.hls_to_rgb(teinte, 0.56, 0.62)
 
-    return "#{:02x}{:02x}{:02x}".format(
-        round(rouge * 255),
-        round(vert * 255),
-        round(bleu * 255),
-    )
+    return f"#{round(rouge * 255):02x}{round(vert * 255):02x}{round(bleu * 255):02x}"

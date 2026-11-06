@@ -3,7 +3,7 @@
 import plotly.graph_objects as go
 
 from src.utils import couleurs
-from src.utils.indicateurs import pyramide_ages, TRANCHES_AGE
+from src.utils.indicateurs import TRANCHES_AGE, pyramide_ages
 
 
 def creer_pyramide(
