@@ -22,6 +22,7 @@ STYLE_FILTRES = {
 FILTRES_PAR_PAGE = {
     "/carte": ["bloc-annee", "bloc-sport", "bloc-sexe", "bloc-ages", "bloc-exclus"],
     "/profils": ["bloc-annee"],
+    "/fetiches": ["bloc-annee", "bloc-sport"],
 }
 TOUS_LES_FILTRES = ["bloc-annee", "bloc-sport", "bloc-sexe", "bloc-ages", "bloc-exclus"]
 

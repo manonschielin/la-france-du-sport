@@ -10,6 +10,7 @@ PAGES = [
     ("/carte", "Explorer la carte"),
     ("/tendances", "Tendances"),
     ("/profils", "Qui fait du sport ?"),
+    ("/fetiches", "Répartition des licences"),
 ]
 
 STYLE_LIEN = {
